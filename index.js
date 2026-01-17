@@ -40,6 +40,20 @@ const ROASTS = [
     "Schleich dich, du Knecht! 👋"
 ];
 
+// 🎮 BACKSEAT GAMING SPRÜCHE
+const BACKSEAT_TIPS = [
+    "Hättest du mal besser gelootet, du Bot.",
+    "Digga, das Movement... spielst du mit Lenkrad?! 🏎️",
+    "Mein kleiner Bruder spielt besser. Und der ist 3.",
+    "Skill Issue. Einfach Skill Issue.",
+    "Warum benutzt du deine Ulti nicht?! MANN EY!",
+    "Lösch das Game einfach. Ist besser für uns alle.",
+    "Crosshair-Placement auf Kniehöhe, starker Move.",
+    "War das Absicht oder hast du einen Krampf?",
+    "Stream Sniper! (Nein Spaß, du bist einfach schlecht).",
+    "Geh lieber Valorant spielen, da treffen die Wände auch zurück."
+];
+
 // 🦍 RÜHL AGGRO TRAINER
 const GYM_TIPS = [
     "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
@@ -66,7 +80,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Ork Translator. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot PvP Edition. ⚔️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -102,7 +116,6 @@ client.once(Events.ClientReady, async c => {
         { name: 'stop', description: 'Stoppt Musik' },
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
-        // ORKIFY UPDATE
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
@@ -112,7 +125,12 @@ client.once(Events.ClientReady, async c => {
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
         { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
-        { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' }
+        { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' },
+        
+        // 🆕 NEUE BEFEHLE (PvP)
+        { name: 'duell', description: 'Fordere jemanden zum 1vs1 heraus', options: [{ name: 'gegner', description: 'Wen willst du boxen?', type: 6, required: true }] },
+        { name: 'ssp', description: 'Schere, Stein, Papier gegen den Bot', options: [{ name: 'wahl', description: 'Wähle deine Waffe', type: 3, required: true, choices: [{ name: 'Schere ✂️', value: 'schere' }, { name: 'Stein 🪨', value: 'stein' }, { name: 'Papier 📄', value: 'papier' }] }] },
+        { name: 'backseat', description: 'Gibt dir einen toxischen Gaming-Tipp' }
     ];
 
     await c.application.commands.set(commands);
@@ -133,7 +151,7 @@ client.once(Events.ClientReady, async c => {
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// PASSIVE ORK REAKTIONEN
+// MESSAGE HANDLER (Auto-Mod & PASSIVE ORK REAKTIONEN)
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
@@ -201,58 +219,15 @@ client.on(Events.InteractionCreate, async interaction => {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
         await interaction.reply(`**🟢 ${quote}**`);
     }
-    
-    // --- 🟢 DER NEUE ORKIFY ÜBERSETZER ---
+    // ORKIFY
     else if (commandName === 'orkify') {
         let text = interaction.options.getString('text').toUpperCase();
-
-        // Das Ork-Wörterbuch (Suchen & Ersetzen)
-        const dictionary = {
-            "HALLO": "OI!",
-            "TSCHÜSS": "ABFAHRT!",
-            "MEIN": "MEINZ",
-            "DEIN": "DEINZ",
-            "FREUND": "BOY",
-            "FREUNDE": "BOYZ",
-            "FEIND": "GIT",
-            "MENSCH": "HUMIE",
-            "AUTO": "KARRE",
-            "SCHNELL": "SCHNELLA",
-            "ROT": "ROT (SCHNELLA!)",
-            "KAMPF": "MOSCH'N",
-            "KRIEG": "WAAAGH",
-            "SCHIEßEN": "DAKKA MACHEN",
-            "SCHIESSEN": "DAKKA MACHEN",
-            "WIE GEHTS": "WAT IZ?",
-            "GUT": "STABIL",
-            "SCHLECHT": "GROTIG",
-            "GELD": "ZÄHNE",
-            "IST": "IZ",
-            "NICHT": "NICH'",
-            "UND": "UN'",
-            "JA": "JO BOSS",
-            "NEIN": "NIX DA"
-        };
-
-        // Wörter ersetzen
-        for (const [key, value] of Object.entries(dictionary)) {
-            // Regex um das Wort zu finden (auch mitten im Satz)
-            const regex = new RegExp(`\\b${key}\\b`, 'g');
-            text = text.replace(regex, value);
-        }
-
-        // Orkische Grammatik & Ausraster
-        text = text.replace(/!/g, "!!! WAAAGH!");
-        text = text.replace(/\./g, "!");
-        text = text.replace(/\?/g, "? HÄ?!");
-
-        // Zufälliges Ork-Gebrüll am Ende
+        const dictionary = { "HALLO": "OI!", "TSCHÜSS": "ABFAHRT!", "MEIN": "MEINZ", "DEIN": "DEINZ", "FREUND": "BOY", "FREUNDE": "BOYZ", "FEIND": "GIT", "MENSCH": "HUMIE", "AUTO": "KARRE", "SCHNELL": "SCHNELLA", "ROT": "ROT (SCHNELLA!)", "KAMPF": "MOSCH'N", "KRIEG": "WAAAGH", "SCHIEßEN": "DAKKA MACHEN", "SCHIESSEN": "DAKKA MACHEN", "WIE GEHTS": "WAT IZ?", "GUT": "STABIL", "SCHLECHT": "GROTIG", "GELD": "ZÄHNE", "IST": "IZ", "NICHT": "NICH'", "UND": "UN'", "JA": "JO BOSS", "NEIN": "NIX DA" };
+        for (const [key, value] of Object.entries(dictionary)) { const regex = new RegExp(`\\b${key}\\b`, 'g'); text = text.replace(regex, value); }
+        text = text.replace(/!/g, "!!! WAAAGH!"); text = text.replace(/\./g, "!"); text = text.replace(/\?/g, "? HÄ?!");
         const suffix = [" WAAAGH!", " HÖHÖ!", " DAKKA DAKKA!", " BRUTAL!", ""][Math.floor(Math.random() * 5)];
-
         await interaction.reply(`🗣️ **${text}${suffix}**`);
     }
-    // -------------------------------------
-
     else if (commandName === 'vote') {
         const question = interaction.options.getString('frage');
         const embed = new EmbedBuilder().setColor(0x00FF00).setTitle('📊 UMFRAGE').setDescription(`**${question}**`).setFooter({ text: `Gestartet von ${interaction.user.username}` });
@@ -288,6 +263,67 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'münze') {
         const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL';
         await interaction.reply(`Der Wurf sagt: **${result}**`);
+    }
+
+    // --- 🆕 NEUE BEFEHLE LOGIK ---
+    else if (commandName === 'backseat') {
+        const tip = BACKSEAT_TIPS[Math.floor(Math.random() * BACKSEAT_TIPS.length)];
+        await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`);
+    }
+    else if (commandName === 'ssp') {
+        const userChoice = interaction.options.getString('wahl');
+        const choices = ['schere', 'stein', 'papier'];
+        const botChoice = choices[Math.floor(Math.random() * choices.length)];
+        
+        let result = "";
+        // Unentschieden
+        if (userChoice === botChoice) result = "Unentschieden. Langweilig.";
+        // User gewinnt
+        else if (
+            (userChoice === 'schere' && botChoice === 'papier') ||
+            (userChoice === 'stein' && botChoice === 'schere') ||
+            (userChoice === 'papier' && botChoice === 'stein')
+        ) {
+            result = "Glückwunsch, du Cheater. Du hast gewonnen. 🎉";
+        } 
+        // Bot gewinnt
+        else {
+            result = "Hah! Get rekt, Noob! Ich hab gewonnen! 😎";
+        }
+
+        // Emoji Mapping für schöne Optik
+        const emojis = { schere: '✂️', stein: '🪨', papier: '📄' };
+        await interaction.reply(`Du: ${emojis[userChoice]} vs. Ich: ${emojis[botChoice]}\n\n**${result}**`);
+    }
+    else if (commandName === 'duell') {
+        const opponent = interaction.options.getUser('gegner');
+        const attacker = interaction.user;
+
+        if (opponent.id === attacker.id) {
+            return interaction.reply('Bruder, du kannst dich nicht selbst schlagen. Geh zum Psychologen.');
+        }
+
+        // Zufälliger Gewinner (50/50)
+        const winner = Math.random() < 0.5 ? attacker : opponent;
+        const loser = winner.id === attacker.id ? opponent : attacker;
+
+        // Verschiedene "Finisher" Texte
+        const finishers = [
+            `hat ${loser} komplett hops genommen.`,
+            `hat ${loser} mit dem Klappstuhl rasiert.`,
+            `hat ${loser} einen 360-No-Scope gedrückt.`,
+            `hat ${loser} in den Boden gestampft. WAAAGH!`,
+            `hat ${loser} wegge-aimbotted.`
+        ];
+        const finishMove = finishers[Math.floor(Math.random() * finishers.length)];
+
+        const embed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle(`⚔️ 1vs1: ${attacker.username} vs. ${opponent.username}`)
+            .setDescription(`Der Kampf beginnt... es ist brutal...\n\n🏆 **${winner.username}** ${finishMove}`)
+            .setThumbnail('https://cdn-icons-png.flaticon.com/512/1012/1012224.png'); // Schwerter Icon
+
+        await interaction.reply({ embeds: [embed] });
     }
 });
 
