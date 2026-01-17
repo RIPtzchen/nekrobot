@@ -4,7 +4,6 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDepend
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
-const sodium = require('libsodium-wrappers'); 
 
 // --- KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -19,7 +18,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Force Sodium. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot Sodium Native. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -33,19 +32,16 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, async c => {
-    console.log(`⏳ Warte auf Sodium...`);
-    await sodium.ready;
-    console.log(`🔐 Sodium geladen!`);
-    
-    // Debug Report: Zeig uns, was geladen ist!
-    console.log(generateDependencyReport());
-
     console.log(`✅ ${c.user.tag} ist online.`);
     
+    // Debug Report: Prüfen ob sodium-native jetzt da ist!
+    console.log(generateDependencyReport());
+
+    // SoundCloud Auth
     try {
         const client_id = await play.getFreeClientID();
         await play.setToken({ soundcloud: { client_id: client_id } });
-        console.log(`✅ SoundCloud ID: ${client_id}`);
+        console.log(`✅ SoundCloud Auth OK (ID: ${client_id})`);
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
