@@ -1,26 +1,30 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, Events, MessageFlags, PermissionFlagsBits } = require('discord.js');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
+const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
 
 // --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
 
-// DEINE IDs:
+// DEINE IDs (Fest verdrahtet):
 const WELCOME_CHANNEL_ID = '1103895697582993561'; 
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
-const AUTO_ROLE_ID       = '1462020482722172958'; 
+const AUTO_ROLE_ID       = '1462020482722172958'; // Lag-Opfer
 
 // 🤬 AUTO-MOD LISTE
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
 let isLive = false;
+let player = createAudioPlayer(); 
+let connection = null; 
 
 // --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot: Wachsam. 👁️'));
+app.get('/', (req, res) => res.send('NekroBot DJ-System Online. 🎧'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 // --- DISCORD CLIENT ---
@@ -29,7 +33,8 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent 
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates // Wichtig für Musik
     ]
 });
 
@@ -37,7 +42,6 @@ const client = new Client({
 client.once(Events.ClientReady, async c => {
     console.log(`✅ ${c.user.tag} ist online.`);
     
-    // ALLE BEFEHLE (Jetzt auch mit /clear)
     const commands = [
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
@@ -48,18 +52,18 @@ client.once(Events.ClientReady, async c => {
             name: 'clear', 
             description: 'Löscht Nachrichten (Nur für Mods)', 
             defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
-            options: [{
-                name: 'anzahl',
-                description: 'Wie viele Nachrichten sollen weg?',
-                type: 4, // Integer
-                required: true
-            }]
-        }
+            options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }]
+        },
+        {
+            name: 'play',
+            description: 'Spielt Musik von YouTube',
+            options: [{ name: 'song', description: 'YouTube Link oder Suche', type: 3, required: true }]
+        },
+        { name: 'stop', description: 'Stoppt die Musik' }
     ];
 
-    // Befehle global registrieren
     await c.application.commands.set(commands);
-    console.log('🤖 Slash-Commands wurden aktualisiert!');
+    console.log('🤖 Alle Befehle (inkl. Musik) registriert!');
 
     checkTwitch();
     setInterval(checkTwitch, 120000); 
@@ -111,41 +115,78 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
-    // 🧹 CLEAR COMMAND (NEU)
-    if (commandName === 'clear') {
-        const amount = interaction.options.getInteger('anzahl');
-        
-        if (amount < 1 || amount > 100) {
-            return interaction.reply({ content: 'Bitte eine Zahl zwischen 1 und 100 eingeben!', flags: MessageFlags.Ephemeral });
+    // 🎵 PLAY
+    if (commandName === 'play') {
+        await interaction.deferReply();
+        const channel = interaction.member.voice.channel;
+        if (!channel) return interaction.editReply('Geh erst in einen Voice-Channel! 🔉');
+
+        const query = interaction.options.getString('song');
+        try {
+            connection = joinVoiceChannel({
+                channelId: channel.id,
+                guildId: channel.guild.id,
+                adapterCreator: channel.guild.voiceAdapterCreator,
+            });
+
+            let stream;
+            let yt_info;
+
+            if (query.startsWith('http')) {
+                yt_info = await play.video_info(query);
+                stream = await play.stream_from_info(yt_info);
+            } else {
+                const search = await play.search(query, { limit: 1 });
+                if (search.length === 0) return interaction.editReply('Nix gefunden. 🤷‍♂️');
+                yt_info = await play.video_info(search[0].url);
+                stream = await play.stream_from_info(yt_info);
+            }
+
+            const resource = createAudioResource(stream.stream, { inputType: stream.type });
+            player.play(resource);
+            connection.subscribe(player);
+
+            const playEmbed = new EmbedBuilder()
+                .setColor(0x9146FF)
+                .setTitle(`🎶 Spiele: ${yt_info.video_details.title}`)
+                .setURL(yt_info.video_details.url)
+                .setThumbnail(yt_info.video_details.thumbnails[0].url);
+            await interaction.editReply({ embeds: [playEmbed] });
+
+        } catch (error) {
+            console.error(error);
+            await interaction.editReply('Fehler beim Abspielen. 💀');
         }
-        
-        // Löschen
-        await interaction.channel.bulkDelete(amount, true).catch(err => {
-            console.error(err);
-            return interaction.reply({ content: 'Fehler beim Löschen (Nachrichten zu alt?)', flags: MessageFlags.Ephemeral });
-        });
-
-        return interaction.reply({ content: `🧹 Habe ${amount} Nachrichten ins Jenseits befördert.`, flags: MessageFlags.Ephemeral });
     }
-
+    // 🛑 STOP
+    else if (commandName === 'stop') {
+        if (connection) {
+            player.stop();
+            connection.destroy();
+            connection = null;
+            await interaction.reply('Musik aus. Tschüss! 👋');
+        } else {
+            await interaction.reply('Ich spiele doch gar nichts.');
+        }
+    }
+    // 🧹 CLEAR
+    else if (commandName === 'clear') {
+        const amount = interaction.options.getInteger('anzahl');
+        if (amount < 1 || amount > 100) return interaction.reply({ content: 'Nur 1-100 erlaubt!', flags: MessageFlags.Ephemeral });
+        await interaction.channel.bulkDelete(amount, true).catch(e => {});
+        interaction.reply({ content: `🧹 ${amount} Nachrichten gelöscht.`, flags: MessageFlags.Ephemeral });
+    }
     // 🤡 MEME
     else if (commandName === 'meme') {
         await interaction.deferReply();
         try {
             const res = await axios.get('https://meme-api.com/gimme/ich_iel'); 
             const meme = res.data;
-            if(meme.nsfw) return interaction.editReply('Pfui! Das war NSFW. 🔞');
-            const memeEmbed = new EmbedBuilder()
-                .setColor(0x99AAB5)
-                .setTitle(meme.title)
-                .setURL(meme.postLink)
-                .setImage(meme.url)
-                .setFooter({ text: `👍 ${meme.ups} | r/ich_iel` });
-            await interaction.editReply({ embeds: [memeEmbed] });
-        } catch (error) { await interaction.editReply('Keine Memes gefunden.'); }
+            if(meme.nsfw) return interaction.editReply('Pfui! NSFW. 🔞');
+            await interaction.editReply({ embeds: [new EmbedBuilder().setTitle(meme.title).setImage(meme.url).setColor(0x99AAB5)] });
+        } catch (e) { await interaction.editReply('Keine Memes.'); }
     }
-
-    // --- REST ---
+    // 🖥️ SETUP
     else if (commandName === 'setup') {
         await interaction.deferReply(); 
         try {
@@ -166,9 +207,10 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [setupEmbed] });
         } catch (e) { await interaction.editReply('Fehler beim Laden.'); }
     }
-    else if (commandName === 'ping') { await interaction.reply('Pong! 🏓 (System stabil)'); }
+    // 🏓 PING etc
+    else if (commandName === 'ping') { await interaction.reply('Pong! 🏓'); }
     else if (commandName === 'website') { await interaction.reply({ content: 'HQ: https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral }); }
-    else if (commandName === 'user') { await interaction.reply(`Identifiziere Subjekt: ${interaction.user.username}... 👁️`); }
+    else if (commandName === 'user') { await interaction.reply(`Subjekt: ${interaction.user.username}`); }
 });
 
 // --- TWITCH CHECKER ---
