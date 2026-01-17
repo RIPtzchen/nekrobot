@@ -4,6 +4,7 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@d
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
+const sodium = require('libsodium-wrappers'); // <--- Der Retter in der Not
 
 // --- KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -18,7 +19,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot SC Auth Fixed. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot Ultimate. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -32,22 +33,18 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, async c => {
+    console.log(`⏳ Warte auf Verschlüsselung...`);
+    await sodium.ready; // <--- HIER WARTEN WIR!
+    console.log(`🔐 Verschlüsselung geladen!`);
+
     console.log(`✅ ${c.user.tag} ist online.`);
     
-    // --- NEU: SoundCloud Ausweis holen ---
+    // SoundCloud Auth
     try {
-        console.log('🔑 Hole SoundCloud ID...');
         const client_id = await play.getFreeClientID();
-        await play.setToken({
-            soundcloud: {
-                client_id: client_id
-            }
-        });
-        console.log(`✅ SoundCloud Auth erfolgreich! (ID: ${client_id})`);
-    } catch (err) {
-        console.error('⚠️ SoundCloud Auth fehlgeschlagen:', err.message);
-    }
-    // -------------------------------------
+        await play.setToken({ soundcloud: { client_id: client_id } });
+        console.log(`✅ SoundCloud Auth OK (ID: ${client_id})`);
+    } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
@@ -97,38 +94,26 @@ client.on(Events.InteractionCreate, async interaction => {
         try {
             const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
             
-            let stream;
-            let title;
-            let url;
+            let stream; let title; let url;
 
-            // Priorität: SoundCloud
             if (query.startsWith('http')) {
-                // Check ob SC Link
                 if (query.includes('soundcloud.com')) {
                      const soInfo = await play.soundcloud(query);
                      stream = await play.stream_from_info(soInfo);
-                     title = soInfo.name;
-                     url = soInfo.url;
+                     title = soInfo.name; url = soInfo.url;
                 } else {
-                     // Fallback YouTube (Risiko 429)
                      try {
                         const ytInfo = await play.video_info(query);
                         stream = await play.stream_from_info(ytInfo);
-                        title = ytInfo.video_details.title;
-                        url = ytInfo.video_details.url;
-                     } catch (e) {
-                        return interaction.editReply('YouTube blockt (429) & Link ist kein SoundCloud. 🤷‍♂️');
-                     }
+                        title = ytInfo.video_details.title; url = ytInfo.video_details.url;
+                     } catch (e) { return interaction.editReply('YouTube blockt (429). Nimm SoundCloud!'); }
                 }
             } else {
-                // Suche immer auf SoundCloud
                 const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (search.length === 0) return interaction.editReply('Nix auf SoundCloud gefunden.');
-                
                 const info = search[0];
                 stream = await play.stream_from_info(info);
-                title = info.name;
-                url = info.url;
+                title = info.name; url = info.url;
             }
             
             const resource = createAudioResource(stream.stream, { inputType: stream.type });
@@ -136,10 +121,7 @@ client.on(Events.InteractionCreate, async interaction => {
             connection.subscribe(player);
 
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
-        } catch (error) { 
-            console.error(error); 
-            await interaction.editReply('Fehler: ' + error.message); 
-        }
+        } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
