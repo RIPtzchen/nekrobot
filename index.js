@@ -24,7 +24,7 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
-// 🔥 ELOTRIX & MONTE ROASTS (Toxic Edition)
+// 🔥 ELOTRIX & MONTE ROASTS
 const ROASTS = [
     "Digga, du bist so ein Bot, lösch dich einfach. 🤖",
     "Was für ein Schmutz-Move. Geh Fortnite spielen! 🚮",
@@ -54,18 +54,11 @@ const GYM_TIPS = [
     "Wenn ich so aussehen würde wie du, würde ich lachend in ne Kreissäge laufen! Beweg dich! 🪚"
 ];
 
-// 🟢 WARHAMMER 40K ORK ZITATE
+// 🟢 ORK ZITATE
 const ORK_QUOTES = [
-    "WAAAGH!!!",
-    "DAKKA DAKKA DAKKA!",
-    "ROT IS SCHNELLA!",
-    "MEHR DAKKA!",
-    "GELB MACHT BUMM!",
-    "MOSCH'N!",
-    "GRÜN IZ DA BESTE!",
-    "WIA GEH'N JETS KÖPPE EINSCHLAG'N!",
-    "SCHNELLA IHR GITS!",
-    "MEIN SPALTA JUCKT!"
+    "WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR DAKKA!",
+    "GELB MACHT BUMM!", "MOSCH'N!", "GRÜN IZ DA BESTE!", "WIA GEH'N JETS KÖPPE EINSCHLAG'N!",
+    "SCHNELLA IHR GITS!", "MEIN SPALTA JUCKT!"
 ];
 
 let isLive = false;
@@ -73,7 +66,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Gamer & Ork Edition. 🟢🎮'));
+app.get('/', (req, res) => res.send('NekroBot Ork Translator. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -100,30 +93,22 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
-        // --- STANDARD ---
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über dich' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
-        
-        // --- AUDIO ---
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
-        
-        // --- GAMER & ORKS ---
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
+        // ORKIFY UPDATE
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
-        
-        // --- FUN & TOXIC ---
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
-
-        // --- UTILITY ---
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
         { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
@@ -148,27 +133,14 @@ client.once(Events.ClientReady, async c => {
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// MESSAGE HANDLER (Auto-Mod & PASSIVE ORK REAKTIONEN)
+// PASSIVE ORK REAKTIONEN
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
-    
     const content = message.content.toLowerCase();
-
-    // 1. Auto-Mod
-    if (BAD_WORDS.some(word => content.includes(word))) {
-        try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {}
-    }
-
-    // 2. 🟢 PASSIVE ORK REAKTIONEN (Der Bot mischt sich ein)
-    if (content.includes('rot')) {
-        message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
-    } else if (content.includes('kampf') || content.includes('krieg') || content.includes('war')) {
-        message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
-    } else if (content.includes('ballern') || content.includes('schießen') || content.includes('gun')) {
-        message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
-    } else if (content.includes('leise') || content.includes('ruhe')) {
-        message.channel.send('**🔊 ORKZ SIND NICHT LEISE! WAAAGH!**');
-    }
+    if (BAD_WORDS.some(word => content.includes(word))) { try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {} }
+    if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
+    else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
+    else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
 });
 
 // WELCOME
@@ -192,11 +164,8 @@ client.on(Events.InteractionCreate, async interaction => {
             const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
             let stream; let title; let url;
             if (query.startsWith('http')) {
-                if (query.includes('soundcloud.com')) {
-                     const soInfo = await play.soundcloud(query); stream = await play.stream_from_info(soInfo); title = soInfo.name; url = soInfo.url;
-                } else {
-                     try { const ytInfo = await play.video_info(query); stream = await play.stream_from_info(ytInfo); title = ytInfo.video_details.title; url = ytInfo.video_details.url; } catch (e) { return interaction.editReply('YouTube (429) blockt. Nimm SoundCloud.'); }
-                }
+                if (query.includes('soundcloud.com')) { const soInfo = await play.soundcloud(query); stream = await play.stream_from_info(soInfo); title = soInfo.name; url = soInfo.url; }
+                else { try { const ytInfo = await play.video_info(query); stream = await play.stream_from_info(ytInfo); title = ytInfo.video_details.title; url = ytInfo.video_details.url; } catch (e) { return interaction.editReply('YouTube (429) blockt. Nimm SoundCloud.'); } }
             } else {
                 const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (search.length === 0) return interaction.editReply('Nix auf SoundCloud gefunden.');
@@ -209,25 +178,14 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
-    
-    // --- MEME UPGRADE (HandOfMemes = Hänno, Kalle, Sterzik Bubble) ---
     else if (commandName === 'meme') { 
-        // Wir nehmen HandOfMemes als Hauptquelle für die "Spandau-Bubble"
-        const subreddits = ['HandOfMemes', 'zocken'];
+        const subreddits = ['HandOfMemes', 'zocken', 'ich_iel'];
         const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)];
-        
-        try {
-            const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); 
-            interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); 
-        } catch (e) {
-            interaction.reply('Meme-Server ist down oder hat keine Lust. 🤷‍♂️');
-        }
+        try { const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); } catch (e) { interaction.reply('Meme-Server pennt. 😴'); }
     }
     else if (commandName === 'ping') interaction.reply('Pong!');
     else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
     else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
-    
-    // --- FUN ---
     else if (commandName === 'orakel') {
         const question = interaction.options.getString('frage');
         const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)];
@@ -243,16 +201,58 @@ client.on(Events.InteractionCreate, async interaction => {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
         await interaction.reply(`**🟢 ${quote}**`);
     }
-    // NEU: ORKIFY
+    
+    // --- 🟢 DER NEUE ORKIFY ÜBERSETZER ---
     else if (commandName === 'orkify') {
         let text = interaction.options.getString('text').toUpperCase();
-        // Orkische Grammatik anwenden
-        text = text.replace(/IST/g, "IZ");
-        text = text.replace(/MEIN/g, "MEINZ");
+
+        // Das Ork-Wörterbuch (Suchen & Ersetzen)
+        const dictionary = {
+            "HALLO": "OI!",
+            "TSCHÜSS": "ABFAHRT!",
+            "MEIN": "MEINZ",
+            "DEIN": "DEINZ",
+            "FREUND": "BOY",
+            "FREUNDE": "BOYZ",
+            "FEIND": "GIT",
+            "MENSCH": "HUMIE",
+            "AUTO": "KARRE",
+            "SCHNELL": "SCHNELLA",
+            "ROT": "ROT (SCHNELLA!)",
+            "KAMPF": "MOSCH'N",
+            "KRIEG": "WAAAGH",
+            "SCHIEßEN": "DAKKA MACHEN",
+            "SCHIESSEN": "DAKKA MACHEN",
+            "WIE GEHTS": "WAT IZ?",
+            "GUT": "STABIL",
+            "SCHLECHT": "GROTIG",
+            "GELD": "ZÄHNE",
+            "IST": "IZ",
+            "NICHT": "NICH'",
+            "UND": "UN'",
+            "JA": "JO BOSS",
+            "NEIN": "NIX DA"
+        };
+
+        // Wörter ersetzen
+        for (const [key, value] of Object.entries(dictionary)) {
+            // Regex um das Wort zu finden (auch mitten im Satz)
+            const regex = new RegExp(`\\b${key}\\b`, 'g');
+            text = text.replace(regex, value);
+        }
+
+        // Orkische Grammatik & Ausraster
         text = text.replace(/!/g, "!!! WAAAGH!");
         text = text.replace(/\./g, "!");
-        await interaction.reply(`🗣️ **${text}**`);
+        text = text.replace(/\?/g, "? HÄ?!");
+
+        // Zufälliges Ork-Gebrüll am Ende
+        const suffix = [" WAAAGH!", " HÖHÖ!", " DAKKA DAKKA!", " BRUTAL!", ""][Math.floor(Math.random() * 5)];
+
+        await interaction.reply(`🗣️ **${text}${suffix}**`);
     }
+    // -------------------------------------
+
     else if (commandName === 'vote') {
         const question = interaction.options.getString('frage');
         const embed = new EmbedBuilder().setColor(0x00FF00).setTitle('📊 UMFRAGE').setDescription(`**${question}**`).setFooter({ text: `Gestartet von ${interaction.user.username}` });
