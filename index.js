@@ -4,7 +4,7 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDepend
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
-const sodium = require('libsodium-wrappers'); // <--- Zurück zum sicheren Hafen
+const sodium = require('libsodium-wrappers');
 
 // --- KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -19,7 +19,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Latest. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot DAVE Ready. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -34,7 +34,7 @@ const client = new Client({
 
 client.once(Events.ClientReady, async c => {
     console.log(`⏳ Warte auf Software-Verschlüsselung...`);
-    await sodium.ready; // <--- Das ist wichtig für Render Free Tier!
+    await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
     // Debug Report
