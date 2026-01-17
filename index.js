@@ -4,42 +4,43 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerSta
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
+const sodium = require('libsodium-wrappers'); // <--- DER RETTER
 
 // --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
 
-// DEINE IDs (Fest verdrahtet):
+// DEINE IDs:
 const WELCOME_CHANNEL_ID = '1103895697582993561'; 
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
-const AUTO_ROLE_ID       = '1462020482722172958'; // Lag-Opfer
+const AUTO_ROLE_ID       = '1462020482722172958'; 
 
-// 🤬 AUTO-MOD LISTE
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
 let isLive = false;
 let player = createAudioPlayer(); 
 let connection = null; 
 
-// --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot DJ-System Online. 🎧'));
+app.get('/', (req, res) => res.send('NekroBot Audio-Core Online. 🎧'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
-// --- DISCORD CLIENT ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates // Wichtig für Musik
+        GatewayIntentBits.GuildVoiceStates 
     ]
 });
 
-// --- EVENTS ---
 client.once(Events.ClientReady, async c => {
+    console.log(`⏳ Warte auf Audio-Verschlüsselung...`);
+    await sodium.ready; // <--- HIER WARTEN WIR AUF DEN DECODER!
+    console.log(`🔐 Audio-System bereit!`);
+
     console.log(`✅ ${c.user.tag} ist online.`);
     
     const commands = [
@@ -63,14 +64,14 @@ client.once(Events.ClientReady, async c => {
     ];
 
     await c.application.commands.set(commands);
-    console.log('🤖 Alle Befehle (inkl. Musik) registriert!');
+    console.log('🤖 Alle Befehle geladen!');
 
     checkTwitch();
     setInterval(checkTwitch, 120000); 
     c.user.setActivity('Sammelt Seelen im Chat', { type: 0 });
 });
 
-// 🛡️ AUTO-MODERATION
+// 🛡️ AUTO-MOD
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
@@ -84,30 +85,16 @@ client.on(Events.MessageCreate, async message => {
     }
 });
 
-// 💀 WELCOME + AUTO ROLE
+// 💀 WELCOME
 client.on(Events.GuildMemberAdd, async member => {
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (channel) {
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor(0xFFFF00) 
-            .setTitle(`⚠️ SYSTEM-ALARM: ENTITY DETECTED ⚠️`)
-            .setDescription(
-                `☣️ Subjekt ${member} ist im **Sektor RIPz** gespawned.\n` +
-                `Status: **Lag-Opfer** (Verifizierung läuft...).\n\n` +
-                `**💀 PROTOKOLL GESTARTET:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
-                `1️⃣ **INHALIEREN:** <#${RULES_CHANNEL_ID}>\n` +
-                `2️⃣ **IDENTIFIZIEREN:** <#${ROLES_CHANNEL_ID}>\n` +
-                `3️⃣ **ESKALIEREN:** Sei kein NPC!\n` +
-                `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n*Glory to the Cyber-Shinigami.* ⛩️`
-            )
-            .setThumbnail(member.user.displayAvatarURL()) 
-            .setTimestamp();
+        const welcomeEmbed = new EmbedBuilder().setColor(0xFFFF00).setTitle(`⚠️ SYSTEM-ALARM: ENTITY DETECTED ⚠️`)
+            .setDescription(`☣️ Subjekt ${member} ist im **Sektor RIPz** gespawned.\nStatus: **Lag-Opfer** (Verifizierung läuft...)\n\n**💀 PROTOKOLL GESTARTET:**\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n1️⃣ **INHALIEREN:** <#${RULES_CHANNEL_ID}>\n2️⃣ **IDENTIFIZIEREN:** <#${ROLES_CHANNEL_ID}>\n3️⃣ **ESKALIEREN:** Sei kein NPC!\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n*Glory to the Cyber-Shinigami.* ⛩️`)
+            .setThumbnail(member.user.displayAvatarURL()).setTimestamp();
         channel.send({ content: `**ALARM!** ${member} hat die Barriere durchbrochen!`, embeds: [welcomeEmbed] });
     }
-    try {
-        const role = member.guild.roles.cache.get(AUTO_ROLE_ID);
-        if (role) await member.roles.add(role);
-    } catch (e) { console.error('Auto-Role Fehler:', e); }
+    try { const role = member.guild.roles.cache.get(AUTO_ROLE_ID); if (role) await member.roles.add(role); } catch (e) {}
 });
 
 // --- COMMANDS ---
@@ -115,7 +102,6 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
-    // 🎵 PLAY
     if (commandName === 'play') {
         await interaction.deferReply();
         const channel = interaction.member.voice.channel;
@@ -124,14 +110,12 @@ client.on(Events.InteractionCreate, async interaction => {
         const query = interaction.options.getString('song');
         try {
             connection = joinVoiceChannel({
-                channelId: channel.id,
-                guildId: channel.guild.id,
-                adapterCreator: channel.guild.voiceAdapterCreator,
+                channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator,
             });
 
+            // Kleiner Fix für YouTube
             let stream;
             let yt_info;
-
             if (query.startsWith('http')) {
                 yt_info = await play.video_info(query);
                 stream = await play.stream_from_info(yt_info);
@@ -146,37 +130,22 @@ client.on(Events.InteractionCreate, async interaction => {
             player.play(resource);
             connection.subscribe(player);
 
-            const playEmbed = new EmbedBuilder()
-                .setColor(0x9146FF)
-                .setTitle(`🎶 Spiele: ${yt_info.video_details.title}`)
-                .setURL(yt_info.video_details.url)
-                .setThumbnail(yt_info.video_details.thumbnails[0].url);
-            await interaction.editReply({ embeds: [playEmbed] });
-
+            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle(`🎶 Spiele: ${yt_info.video_details.title}`).setURL(yt_info.video_details.url).setThumbnail(yt_info.video_details.thumbnails[0].url)] });
         } catch (error) {
             console.error(error);
             await interaction.editReply('Fehler beim Abspielen. 💀');
         }
     }
-    // 🛑 STOP
     else if (commandName === 'stop') {
-        if (connection) {
-            player.stop();
-            connection.destroy();
-            connection = null;
-            await interaction.reply('Musik aus. Tschüss! 👋');
-        } else {
-            await interaction.reply('Ich spiele doch gar nichts.');
-        }
+        if (connection) { player.stop(); connection.destroy(); connection = null; await interaction.reply('Musik aus. Tschüss! 👋'); } 
+        else { await interaction.reply('Ich spiele doch gar nichts.'); }
     }
-    // 🧹 CLEAR
     else if (commandName === 'clear') {
         const amount = interaction.options.getInteger('anzahl');
         if (amount < 1 || amount > 100) return interaction.reply({ content: 'Nur 1-100 erlaubt!', flags: MessageFlags.Ephemeral });
         await interaction.channel.bulkDelete(amount, true).catch(e => {});
         interaction.reply({ content: `🧹 ${amount} Nachrichten gelöscht.`, flags: MessageFlags.Ephemeral });
     }
-    // 🤡 MEME
     else if (commandName === 'meme') {
         await interaction.deferReply();
         try {
@@ -186,41 +155,27 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setTitle(meme.title).setImage(meme.url).setColor(0x99AAB5)] });
         } catch (e) { await interaction.editReply('Keine Memes.'); }
     }
-    // 🖥️ SETUP
     else if (commandName === 'setup') {
         await interaction.deferReply(); 
         try {
             const url = 'https://riptzchen.github.io/riptzchen-website/setup.json';
             const response = await axios.get(url);
             const data = response.data;
-            const setupEmbed = new EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(`🖥️ ${data.pc_name || 'Setup'}`)
-                .setDescription(`*${data.status}*\nBesitzer: **${data.owner}**`)
-                .setThumbnail('https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
-                .addFields(
-                    { name: 'GPU', value: data.specs.gpu, inline: true },
-                    { name: 'CPU', value: data.specs.cpu, inline: true },
-                    { name: 'RAM', value: data.specs.ram, inline: true },
-                    { name: 'Peripherie', value: `${data.peripherals.keyboard}\n${data.peripherals.mouse}`, inline: false }
-                );
+            const setupEmbed = new EmbedBuilder().setColor(0x8B0000).setTitle(`🖥️ ${data.pc_name || 'Setup'}`).setDescription(`*${data.status}*\nBesitzer: **${data.owner}**`).setThumbnail('https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
+                .addFields({ name: 'GPU', value: data.specs.gpu, inline: true }, { name: 'CPU', value: data.specs.cpu, inline: true }, { name: 'RAM', value: data.specs.ram, inline: true }, { name: 'Peripherie', value: `${data.peripherals.keyboard}\n${data.peripherals.mouse}`, inline: false });
             await interaction.editReply({ embeds: [setupEmbed] });
         } catch (e) { await interaction.editReply('Fehler beim Laden.'); }
     }
-    // 🏓 PING etc
     else if (commandName === 'ping') { await interaction.reply('Pong! 🏓'); }
     else if (commandName === 'website') { await interaction.reply({ content: 'HQ: https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral }); }
     else if (commandName === 'user') { await interaction.reply(`Subjekt: ${interaction.user.username}`); }
 });
 
-// --- TWITCH CHECKER ---
 async function checkTwitch() {
     try {
         const tokenResponse = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`);
         const accessToken = tokenResponse.data.access_token;
-        const streamResponse = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER_LOGIN}`, {
-            headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, 'Authorization': `Bearer ${accessToken}` }
-        });
+        const streamResponse = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER_LOGIN}`, { headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } });
         const data = streamResponse.data.data;
         if (data && data.length > 0) {
             if (!isLive) {
@@ -233,9 +188,7 @@ async function checkTwitch() {
                     client.user.setActivity('RIPtzchen im Stream zu', { type: 3 }); 
                 }
             }
-        } else {
-            if (isLive) { isLive = false; client.user.setActivity('Sammelt Seelen im Chat', { type: 0 }); }
-        }
+        } else { if (isLive) { isLive = false; client.user.setActivity('Sammelt Seelen im Chat', { type: 0 }); } }
     } catch (error) { console.error('Twitch Check Fehler:', error.message); }
 }
 
