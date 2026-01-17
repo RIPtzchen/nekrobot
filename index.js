@@ -121,7 +121,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Held & Games. 🧱🎮'));
+app.get('/', (req, res) => res.send('NekroBot Useful Edition. 🛠️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -175,11 +175,10 @@ client.once(Events.ClientReady, async c => {
 
         // CONTENT CREATOR STYLE
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
-        { name: 'held', description: 'Weisheiten vom Held der Steine 🧱' }, // NEU
+        { name: 'held', description: 'Weisheiten vom Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'stronghold', description: 'Ein weiser Rat vom Burg-Berater' },
-        { name: 'waszocken', description: 'Bot entscheidet, welches Game du spielst' }, // NEU
-
+        { name: 'waszocken', description: 'Bot entscheidet, welches Game du spielst' },
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User (Text)', options: [
@@ -187,20 +186,22 @@ client.once(Events.ClientReady, async c => {
             { name: 'stil', description: 'Welcher Style?', type: 3, required: false, choices: [{name: 'Hänno-KI 🤖', value: 'ki'}, {name: 'Toxic Streamer 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } 
         ]},
         
-        // UTILITY
+        // UTILITY (Die nützlichen Sachen)
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
-        { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
-        { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
+        { name: 'idee', description: 'Reiche einen Vorschlag ein (Community Abstimmung)', options: [{ name: 'vorschlag', description: 'Deine glorreiche Idee', type: 3, required: true }] }, // NEU
+        { name: 'timer', description: 'Stellt einen Wecker', options: [{ name: 'minuten', description: 'Wie viele Minuten?', type: 4, required: true }, { name: 'grund', description: 'Wofür?', type: 3, required: false }] }, // NEU
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
         { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
+        { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
+        
+        // INTERACTION
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
         { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' },
-        
-        // PVP & FUN
+        { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
         { name: 'duell', description: 'Fordere jemanden zum 1vs1 heraus', options: [{ name: 'gegner', description: 'Wen willst du boxen?', type: 6, required: true }] },
         { name: 'ssp', description: 'Schere, Stein, Papier gegen den Bot', options: [{ name: 'wahl', description: 'Wähle deine Waffe', type: 3, required: true, choices: [{ name: 'Schere ✂️', value: 'schere' }, { name: 'Stein 🪨', value: 'stein' }, { name: 'Papier 📄', value: 'papier' }] }] },
         { name: 'backseat', description: 'Gibt dir einen toxischen Gaming-Tipp' },
-        { name: 'fakeban', description: 'Trolle einen User mit einem Fake-Ban', options: [{ name: 'user', description: 'Wen willst du erschrecken?', type: 6, required: true }] } // NEU
+        { name: 'fakeban', description: 'Trolle einen User mit einem Fake-Ban', options: [{ name: 'user', description: 'Wen willst du erschrecken?', type: 6, required: true }] }
     ];
 
     await c.application.commands.set(commands);
@@ -269,7 +270,30 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
-    // --- SPRACHBEFEHLE ---
+    // --- NEUE UTILITY BEFEHLE ---
+    else if (commandName === 'idee') {
+        const idea = interaction.options.getString('vorschlag');
+        const embed = new EmbedBuilder()
+            .setColor(0xFFA500)
+            .setTitle('💡 Neue Idee!')
+            .setDescription(idea)
+            .setFooter({ text: `Vorschlag von ${interaction.user.username}` });
+        
+        const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
+        await msg.react('✅');
+        await msg.react('❌');
+    }
+    else if (commandName === 'timer') {
+        const minutes = interaction.options.getInteger('minuten');
+        const reason = interaction.options.getString('grund') || 'Zeit abgelaufen!';
+        
+        await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`);
+        
+        setTimeout(() => {
+            interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`);
+        }, minutes * 60 * 1000);
+    }
+    // ----------------------------
     else if (commandName === 'sag') {
         const channel = interaction.member.voice.channel;
         if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
@@ -286,7 +310,6 @@ client.on(Events.InteractionCreate, async interaction => {
         playTTS(channel, `${target.username}, ${randomRoast}`);
         await interaction.reply({ content: `🗣️ Pöbele gegen ${target.username}...`, flags: MessageFlags.Ephemeral });
     }
-    // --- HELD & GAMES ---
     else if (commandName === 'held') {
         const quote = HELD_QUOTES[Math.floor(Math.random() * HELD_QUOTES.length)];
         await interaction.reply(`🧱 **Held der Steine:** "${quote}"`);
@@ -299,11 +322,8 @@ client.on(Events.InteractionCreate, async interaction => {
         const target = interaction.options.getUser('user');
         const embed = new EmbedBuilder().setColor(0xFF0000).setTitle('🚨 USER BANNED').setDescription(`**${target.username}** wurde permanent vom Server gebannt.`).setFooter({ text: 'Grund: Skill Issue' });
         await interaction.reply({ embeds: [embed] });
-        setTimeout(() => {
-            interaction.editReply({ content: `Spaaaß! ${target} bleibt hier. Du Lellek. 🤡`, embeds: [] });
-        }, 4000); // Löst nach 4 Sekunden auf
+        setTimeout(() => { interaction.editReply({ content: `Spaaaß! ${target} bleibt hier. Du Lellek. 🤡`, embeds: [] }); }, 4000);
     }
-    // -----------------------
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
     else if (commandName === 'meme') { 
