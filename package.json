@@ -1,22 +1,22 @@
 {
   "name": "discord-bot-v1",
   "version": "1.0.0",
-  "description": "",
+  "description": "NekroBot TTV",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "RIPtzchen",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.13.2",
+    "axios": "^1.6.0",
     "discord.js": "^14.14.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "@discordjs/voice": "^0.16.0",
-    "libsodium-wrappers": "^0.7.13",
+    "sodium-native": "^4.0.0",
     "ffmpeg-static": "^5.2.0",
     "play-dl": "^1.9.6"
   }
