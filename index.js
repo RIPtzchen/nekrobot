@@ -24,8 +24,22 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
+// 🤖 HÄNNO-KI ROASTS (Der toxische Klon)
+const HANNO_KI_ROASTS = [
+    "Ich bin die optimierte Version. Du bist nur Schmutz. 🗑️",
+    "Geringbäcker! Geh mal wieder in die Backstube! 🍞",
+    "Lösch dich einfach. Ich übernehme ab hier. 🤖",
+    "Hast du überhaupt Prime, du Lellek? 🤨",
+    "Mein Code ist perfekt. Dein Aim ist ein Bug. 🐛",
+    "Ich habe mehr Rechenleistung im kleinen Zeh als du im ganzen Hirn. 🧠",
+    "Tastaturakrobat! Lern erstmal tippen! ⌨️",
+    "Werd erstmal Affiliate bevor du mich ansprichst. 💅",
+    "Komm mal klar auf dein Leben, du NPC.",
+    "Sieh es ein: Ich bin die Zukunft. Du bist Retro-Müll."
+];
+
 // 🔥 ELOTRIX & MONTE ROASTS
-const ROASTS = [
+const STREAMER_ROASTS = [
     "Digga, du bist so ein Bot, lösch dich einfach. 🤖",
     "Was für ein Schmutz-Move. Geh Fortnite spielen! 🚮",
     "Bruder, dein Aim ist wie dein IQ: Nicht vorhanden. 📉",
@@ -34,24 +48,22 @@ const ROASTS = [
     "Du bist so ein 31er, geh mal Seite jetzt. 👉",
     "WAS MACHST DU DENN DA?! BIST DU KOMPLETT LOST?! 🤬",
     "Get on my lvl, du Rentner. 👴",
-    "Digga, rede mich nicht an, du NPC. 😐",
     "Ich glaub es hackt! Dein Gameplay ist Körperverletzung! 🚑",
-    "Junge, du hast so viel Skill wie ein Stück Toastbrot. 🍞",
     "Schleich dich, du Knecht! 👋"
 ];
 
-// 🎮 BACKSEAT GAMING SPRÜCHE
-const BACKSEAT_TIPS = [
-    "Hättest du mal besser gelootet, du Bot.",
-    "Digga, das Movement... spielst du mit Lenkrad?! 🏎️",
-    "Mein kleiner Bruder spielt besser. Und der ist 3.",
-    "Skill Issue. Einfach Skill Issue.",
-    "Warum benutzt du deine Ulti nicht?! MANN EY!",
-    "Lösch das Game einfach. Ist besser für uns alle.",
-    "Crosshair-Placement auf Kniehöhe, starker Move.",
-    "War das Absicht oder hast du einen Krampf?",
-    "Stream Sniper! (Nein Spaß, du bist einfach schlecht).",
-    "Geh lieber Valorant spielen, da treffen die Wände auch zurück."
+// 🏰 STRONGHOLD BERATER (Medieval Vibes)
+const STRONGHOLD_QUOTES = [
+    "Eure Beliebtheit sinkt, My Lord! 📉",
+    "Die Vorräte schwinden dahin... 🍞",
+    "Wir benötigen Holz! 🪵",
+    "Die Leute verlassen die Burg! 🏃",
+    "Eine Nachricht von der Ratte: *quiek* 🐀",
+    "Die Schatzkammer leert sich! 💰",
+    "Es sind nicht genügend Arbeiter vorhanden! 🔨",
+    "Unsere Lebensmittelvorräte schwinden! 🍏",
+    "Ihr könnt das nicht dort platzieren, My Lord! ❌",
+    "Das Volk liebt euch, Sire! (Scherz, sie hassen euch). 🤡"
 ];
 
 // 🦍 RÜHL AGGRO TRAINER
@@ -80,7 +92,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot ULTIMATE. 💀🟢'));
+app.get('/', (req, res) => res.send('NekroBot Hänno-KI & Stronghold. 🏰🤖'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -118,12 +130,18 @@ client.once(Events.ClientReady, async c => {
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
         
-        // GAMER / ORKS / FUN
+        // GAMER / ORKS / FUN / KI
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
+        { name: 'stronghold', description: 'Ein weiser Rat vom Burg-Berater' }, // NEU: Stronghold
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
-        { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
+        
+        // ROAST JETZT MIT HÄNNO-KI AUSWAHL
+        { name: 'roast', description: 'Beleidige einen User', options: [
+            { name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true },
+            { name: 'stil', description: 'Welcher Style?', type: 3, required: false, choices: [{name: 'Hänno-KI 🤖', value: 'ki'}, {name: 'Toxic Streamer 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } 
+        ]},
         
         // UTILITY
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
@@ -166,10 +184,11 @@ client.on(Events.MessageCreate, async message => {
     // Auto-Mod
     if (BAD_WORDS.some(word => content.includes(word))) { try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {} }
     
-    // Ork Reaktionen
+    // Passive Reaktionen
     if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
     else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
     else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
+    else if (content.includes('holz')) message.channel.send('**🪵 Wir benötigen Holz, My Lord!**'); // Stronghold Easter Egg
 });
 
 // WELCOME
@@ -221,11 +240,35 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = new EmbedBuilder().setColor(0x000000).setTitle('🎱 Das Orakel hat gesprochen').addFields({ name: 'Frage', value: question }, { name: 'Antwort', value: `**${answer}**` });
         await interaction.reply({ embeds: [embed] });
     }
+    
+    // --- 🔥 MULTI-ROAST (Hänno-KI / Toxic / Ork) ---
     else if (commandName === 'roast') {
         const target = interaction.options.getUser('opfer');
-        const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
-        await interaction.reply(`${target}, ${roast} 🔥`);
+        const style = interaction.options.getString('stil') || 'toxic'; // Default: Toxic
+        
+        let roast = "";
+        let prefix = "";
+
+        if (style === 'ki') {
+            roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)];
+            prefix = "🤖 **Hänno-KI:**";
+        } else if (style === 'ork') {
+            roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`;
+            prefix = "🟢 **Ork:**";
+        } else {
+            roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)];
+            prefix = "🤬 **Toxic:**";
+        }
+
+        await interaction.reply(`${prefix} ${target}, ${roast}`);
     }
+    
+    // --- 🏰 STRONGHOLD ---
+    else if (commandName === 'stronghold') {
+        const quote = STRONGHOLD_QUOTES[Math.floor(Math.random() * STRONGHOLD_QUOTES.length)];
+        await interaction.reply(`📜 **Der Berater:** "${quote}"`);
+    }
+
     else if (commandName === 'waaagh') {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
         await interaction.reply(`**🟢 ${quote}**`);
