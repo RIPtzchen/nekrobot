@@ -3,20 +3,19 @@
   "version": "1.0.0",
   "description": "NekroBot TTV",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "engines": {
+    "node": "20.x"
   },
-  "keywords": [],
-  "author": "RIPtzchen",
-  "license": "ISC",
-  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "discord.js": "^14.14.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "@discordjs/voice": "^0.16.0",
-    "tweetnacl": "^1.0.3",
+    "sodium-native": "^4.0.0",
     "opusscript": "^0.0.8",
     "ffmpeg-static": "^5.2.0",
     "play-dl": "^1.9.6"
