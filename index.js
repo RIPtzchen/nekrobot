@@ -3,18 +3,22 @@ const { Client, GatewayIntentBits, EmbedBuilder, Events, MessageFlags } = requir
 const axios = require('axios');
 const express = require('express');
 
-// --- ⚙️ KONFIGURATION (HIER DEINE IDs EINTRAGEN!) ---
+// --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
-const WELCOME_CHANNEL_ID = '1103895697582993561'; // Wo die Nachricht erscheint
-const RULES_CHANNEL_ID   = '1103895697582993562';     // ID von #gesetze
-const ROLES_CHANNEL_ID   = '1103895697582993568';     // ID von #identifizierung
+// HIER DEINE IDs DRIN LASSEN (die hast du ja schon):
+const WELCOME_CHANNEL_ID = '1103895697582993561'; 
+const RULES_CHANNEL_ID   = '1103895697582993562';     
+const ROLES_CHANNEL_ID   = '1103895697582993568';     
+
+// NEU: HIER DIE ROLLE REIN, DIE JEDER KRIEGEN SOLL:
+const AUTO_ROLE_ID       = '1462020482722172958'; 
 
 let isLive = false;
 
 // --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Protokoll aktiv. ⛩️'));
+app.get('/', (req, res) => res.send('NekroBot verteilt Rollen. 🏷️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 // --- DISCORD CLIENT ---
@@ -33,35 +37,49 @@ client.once(Events.ClientReady, c => {
     c.user.setActivity('Sammelt Seelen im Chat', { type: 0 });
 });
 
-// 💀 NEUES WELCOME PROTOKOLL (Koya Style)
+// 💀 WELCOME + AUTO ROLE
 client.on(Events.GuildMemberAdd, async member => {
+    // 1. Nachricht senden
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    if (!channel) return;
+    if (channel) {
+        const welcomeEmbed = new EmbedBuilder()
+            .setColor(0xFFFF00) 
+            .setTitle(`⚠️ SYSTEM-ALARM: ENTITY DETECTED ⚠️`)
+            .setDescription(
+                `☣️ Subjekt ${member} ist im **Sektor RIPz** gespawned.\n` +
+                `Status: **Lag-Opfer** (Verifizierung läuft...).\n\n` +
+                `**💀 PROTOKOLL GESTARTET:**\n` +
+                `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n` +
+                `1️⃣ **INHALIEREN:**\n` +
+                `Lies die Gesetze, sonst droht der Exterminatus:\n` +
+                `👉 <#${RULES_CHANNEL_ID}>\n\n` +
+                `2️⃣ **IDENTIFIZIEREN:**\n` +
+                `Wähle deine Mutation (Rollen) hier:\n` +
+                `👉 <#${ROLES_CHANNEL_ID}>\n\n` +
+                `3️⃣ **ESKALIEREN:**\n` +
+                `Meld dich im Chat oder geh in den Voice.\n` +
+                `(Sei kein NPC!)\n\n` +
+                `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
+                `*Glory to the Cyber-Shinigami.* ⛩️`
+            )
+            .setThumbnail(member.user.displayAvatarURL()) 
+            .setTimestamp();
+        
+        channel.send({ content: `**ALARM!** ${member} hat die Barriere durchbrochen!`, embeds: [welcomeEmbed] });
+    }
 
-    const welcomeEmbed = new EmbedBuilder()
-        .setColor(0xFFFF00) // Cyber-Gelb (wie im Screenshot "System Alarm")
-        .setTitle(`⚠️ SYSTEM-ALARM: ENTITY DETECTED ⚠️`)
-        .setDescription(
-            `☣️ Subjekt ${member} ist im **Sektor RIPz** gespawned.\n` +
-            `Status: **Lag-Opfer** (noch nicht verifiziert).\n\n` +
-            `**💀 PROTOKOLL GESTARTET:**\n` +
-            `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n` +
-            `1️⃣ **INHALIEREN:**\n` +
-            `Lies die Gesetze, sonst droht der Exterminatus:\n` +
-            `👉 <#${RULES_CHANNEL_ID}>\n\n` +
-            `2️⃣ **IDENTIFIZIEREN:**\n` +
-            `Wähle deine Mutation (Rollen) hier:\n` +
-            `👉 <#${ROLES_CHANNEL_ID}>\n\n` +
-            `3️⃣ **ESKALIEREN:**\n` +
-            `Meld dich im Chat oder geh in den Voice.\n` +
-            `(Sei kein NPC!)\n\n` +
-            `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
-            `*Glory to the Cyber-Shinigami.* ⛩️`
-        )
-        .setThumbnail(member.user.displayAvatarURL()) // Zeigt das Bild vom neuen User
-        .setTimestamp();
-
-    channel.send({ content: `**ALARM!** ${member} hat die Barriere durchbrochen!`, embeds: [welcomeEmbed] });
+    // 2. Rolle geben (NEU!)
+    try {
+        const role = member.guild.roles.cache.get(AUTO_ROLE_ID);
+        if (role) {
+            await member.roles.add(role);
+            console.log(`🏷️ Rolle ${role.name} an ${member.user.tag} vergeben.`);
+        } else {
+            console.error('❌ Rolle nicht gefunden! Check die ID.');
+        }
+    } catch (error) {
+        console.error('❌ Konnte Rolle nicht vergeben (Bot muss in der Rangliste höher stehen!):', error.message);
+    }
 });
 
 // --- TWITCH CHECKER ---
@@ -77,7 +95,7 @@ async function checkTwitch() {
         if (data && data.length > 0) {
             if (!isLive) {
                 isLive = true;
-                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); // Das ist der Twitch-Alarm-Channel
+                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); 
                 if (channel) {
                     const streamInfo = data[0];
                     const liveEmbed = new EmbedBuilder()
