@@ -80,7 +80,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot PvP Edition. ⚔️'));
+app.get('/', (req, res) => res.send('NekroBot ULTIMATE. 💀🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -107,18 +107,25 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
+        // STANDARD
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über dich' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
+        
+        // AUDIO
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
+        
+        // GAMER / ORKS / FUN
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
+        
+        // UTILITY
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
@@ -127,7 +134,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
         { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' },
         
-        // 🆕 NEUE BEFEHLE (PvP)
+        // PVP
         { name: 'duell', description: 'Fordere jemanden zum 1vs1 heraus', options: [{ name: 'gegner', description: 'Wen willst du boxen?', type: 6, required: true }] },
         { name: 'ssp', description: 'Schere, Stein, Papier gegen den Bot', options: [{ name: 'wahl', description: 'Wähle deine Waffe', type: 3, required: true, choices: [{ name: 'Schere ✂️', value: 'schere' }, { name: 'Stein 🪨', value: 'stein' }, { name: 'Papier 📄', value: 'papier' }] }] },
         { name: 'backseat', description: 'Gibt dir einen toxischen Gaming-Tipp' }
@@ -151,11 +158,15 @@ client.once(Events.ClientReady, async c => {
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// MESSAGE HANDLER (Auto-Mod & PASSIVE ORK REAKTIONEN)
+// PASSIVE ORK REAKTIONEN & AUTO-MOD
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
+    
+    // Auto-Mod
     if (BAD_WORDS.some(word => content.includes(word))) { try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {} }
+    
+    // Ork Reaktionen
     if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
     else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
     else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
@@ -264,8 +275,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL';
         await interaction.reply(`Der Wurf sagt: **${result}**`);
     }
-
-    // --- 🆕 NEUE BEFEHLE LOGIK ---
+    // PVP & Backseat
     else if (commandName === 'backseat') {
         const tip = BACKSEAT_TIPS[Math.floor(Math.random() * BACKSEAT_TIPS.length)];
         await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`);
@@ -274,55 +284,22 @@ client.on(Events.InteractionCreate, async interaction => {
         const userChoice = interaction.options.getString('wahl');
         const choices = ['schere', 'stein', 'papier'];
         const botChoice = choices[Math.floor(Math.random() * choices.length)];
-        
         let result = "";
-        // Unentschieden
         if (userChoice === botChoice) result = "Unentschieden. Langweilig.";
-        // User gewinnt
-        else if (
-            (userChoice === 'schere' && botChoice === 'papier') ||
-            (userChoice === 'stein' && botChoice === 'schere') ||
-            (userChoice === 'papier' && botChoice === 'stein')
-        ) {
-            result = "Glückwunsch, du Cheater. Du hast gewonnen. 🎉";
-        } 
-        // Bot gewinnt
-        else {
-            result = "Hah! Get rekt, Noob! Ich hab gewonnen! 😎";
-        }
-
-        // Emoji Mapping für schöne Optik
+        else if ((userChoice === 'schere' && botChoice === 'papier') || (userChoice === 'stein' && botChoice === 'schere') || (userChoice === 'papier' && botChoice === 'stein')) result = "Glückwunsch, du Cheater. Du hast gewonnen. 🎉";
+        else result = "Hah! Get rekt, Noob! Ich hab gewonnen! 😎";
         const emojis = { schere: '✂️', stein: '🪨', papier: '📄' };
         await interaction.reply(`Du: ${emojis[userChoice]} vs. Ich: ${emojis[botChoice]}\n\n**${result}**`);
     }
     else if (commandName === 'duell') {
         const opponent = interaction.options.getUser('gegner');
         const attacker = interaction.user;
-
-        if (opponent.id === attacker.id) {
-            return interaction.reply('Bruder, du kannst dich nicht selbst schlagen. Geh zum Psychologen.');
-        }
-
-        // Zufälliger Gewinner (50/50)
+        if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen. Geh zum Psychologen.');
         const winner = Math.random() < 0.5 ? attacker : opponent;
         const loser = winner.id === attacker.id ? opponent : attacker;
-
-        // Verschiedene "Finisher" Texte
-        const finishers = [
-            `hat ${loser} komplett hops genommen.`,
-            `hat ${loser} mit dem Klappstuhl rasiert.`,
-            `hat ${loser} einen 360-No-Scope gedrückt.`,
-            `hat ${loser} in den Boden gestampft. WAAAGH!`,
-            `hat ${loser} wegge-aimbotted.`
-        ];
+        const finishers = [`hat ${loser} komplett hops genommen.`, `hat ${loser} mit dem Klappstuhl rasiert.`, `hat ${loser} einen 360-No-Scope gedrückt.`, `hat ${loser} in den Boden gestampft. WAAAGH!`, `hat ${loser} wegge-aimbotted.`];
         const finishMove = finishers[Math.floor(Math.random() * finishers.length)];
-
-        const embed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle(`⚔️ 1vs1: ${attacker.username} vs. ${opponent.username}`)
-            .setDescription(`Der Kampf beginnt... es ist brutal...\n\n🏆 **${winner.username}** ${finishMove}`)
-            .setThumbnail('https://cdn-icons-png.flaticon.com/512/1012/1012224.png'); // Schwerter Icon
-
+        const embed = new EmbedBuilder().setColor(0xFF0000).setTitle(`⚔️ 1vs1: ${attacker.username} vs. ${opponent.username}`).setDescription(`Der Kampf beginnt... es ist brutal...\n\n🏆 **${winner.username}** ${finishMove}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/1012/1012224.png');
         await interaction.reply({ embeds: [embed] });
     }
 });
