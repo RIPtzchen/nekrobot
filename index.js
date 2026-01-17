@@ -69,7 +69,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Full Package. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot Final Clean. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -79,7 +79,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMessageReactions // Wichtig für Votes!
+        GatewayIntentBits.GuildMessageReactions 
     ]
 });
 
@@ -108,10 +108,11 @@ client.once(Events.ClientReady, async c => {
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
         
-        // NEUE BEFEHLE
+        // NEUE BEFEHLE (Nur die gewollten)
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
-        { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] }
+        { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
+        { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] }
     ];
 
     await c.application.commands.set(commands);
@@ -193,32 +194,25 @@ client.on(Events.InteractionCreate, async interaction => {
         const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
         await interaction.reply(`${target}, ${roast} 🔥`);
     }
-    // --- NEUE LOGIK ---
     else if (commandName === 'waaagh') {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
-        // Sendet das Zitat in fett und grün (so gut es geht in Text)
         await interaction.reply(`**🟢 ${quote}**`);
     }
     else if (commandName === 'vote') {
         const question = interaction.options.getString('frage');
-        const embed = new EmbedBuilder()
-            .setColor(0x00FF00) // Grün für Orks? Oder Blau? Nehmen wir Neon-Grün.
-            .setTitle('📊 UMFRAGE')
-            .setDescription(`**${question}**`)
-            .setFooter({ text: `Gestartet von ${interaction.user.username}` });
-        
+        const embed = new EmbedBuilder().setColor(0x00FF00).setTitle('📊 UMFRAGE').setDescription(`**${question}**`).setFooter({ text: `Gestartet von ${interaction.user.username}` });
         const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
-        // Der Bot reagiert selbst, damit Leute nur klicken müssen
-        await msg.react('👍');
-        await msg.react('👎');
+        await msg.react('👍'); await msg.react('👎');
     }
     else if (commandName === 'avatar') {
-        const user = interaction.options.getUser('user') || interaction.user; // Wenn kein User angegeben, nimm den eigenen
-        const embed = new EmbedBuilder()
-            .setTitle(`Avatar von ${user.username}`)
-            .setColor(0x9146FF)
-            .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }));
+        const user = interaction.options.getUser('user') || interaction.user;
+        const embed = new EmbedBuilder().setTitle(`Avatar von ${user.username}`).setColor(0x9146FF).setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }));
         await interaction.reply({ embeds: [embed] });
+    }
+    else if (commandName === 'dice') {
+        const sides = interaction.options.getInteger('seiten') || 6;
+        const roll = Math.floor(Math.random() * sides) + 1;
+        await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`);
     }
 });
 
