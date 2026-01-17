@@ -1,10 +1,12 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
 const sodium = require('libsodium-wrappers');
+// NEU: Sprach-Modul
+const googleTTS = require('google-tts-api');
 
 // --- ⚙️ KONFIGURATION & LISTEN ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -26,58 +28,58 @@ const ORACLE_ANSWERS = [
 
 // 🤖 HÄNNO-KI ROASTS (Der toxische Klon)
 const HANNO_KI_ROASTS = [
-    "Ich bin die optimierte Version. Du bist nur Schmutz. 🗑️",
-    "Geringbäcker! Geh mal wieder in die Backstube! 🍞",
-    "Lösch dich einfach. Ich übernehme ab hier. 🤖",
-    "Hast du überhaupt Prime, du Lellek? 🤨",
-    "Mein Code ist perfekt. Dein Aim ist ein Bug. 🐛",
-    "Ich habe mehr Rechenleistung im kleinen Zeh als du im ganzen Hirn. 🧠",
-    "Tastaturakrobat! Lern erstmal tippen! ⌨️",
-    "Werd erstmal Affiliate bevor du mich ansprichst. 💅",
-    "Komm mal klar auf dein Leben, du NPC.",
+    "Ich bin die optimierte Version. Du bist nur Schmutz.",
+    "Geringbäcker! Geh mal wieder in die Backstube!",
+    "Lösch dich einfach. Ich übernehme ab hier.",
+    "Hast du überhaupt Prime, du Lellek?",
+    "Mein Code ist perfekt. Dein Aim ist ein Bug.",
+    "Ich habe mehr Rechenleistung im kleinen Zeh als du im ganzen Hirn.",
+    "Tastaturakrobat! Lern erstmal tippen!",
+    "Werd erstmal Affiliate bevor du mich ansprichst.",
+    "Komm mal klar auf dein Leben, du En Pii Sie.",
     "Sieh es ein: Ich bin die Zukunft. Du bist Retro-Müll."
 ];
 
 // 🔥 ELOTRIX & MONTE ROASTS
 const STREAMER_ROASTS = [
-    "Digga, du bist so ein Bot, lösch dich einfach. 🤖",
-    "Was für ein Schmutz-Move. Geh Fortnite spielen! 🚮",
-    "Bruder, dein Aim ist wie dein IQ: Nicht vorhanden. 📉",
-    "Halt die Gosch'n, du Lellek. Niemand hat gefragt! 🤫",
-    "Junge, guck dich doch mal an. Einfach bodenlos. 🕳️",
-    "Du bist so ein 31er, geh mal Seite jetzt. 👉",
-    "WAS MACHST DU DENN DA?! BIST DU KOMPLETT LOST?! 🤬",
-    "Get on my lvl, du Rentner. 👴",
-    "Ich glaub es hackt! Dein Gameplay ist Körperverletzung! 🚑",
-    "Schleich dich, du Knecht! 👋"
+    "Digga, du bist so ein Bot, lösch dich einfach.",
+    "Was für ein Schmutz-Move. Geh Fortnite spielen!",
+    "Bruder, dein Aim ist wie dein IQ: Nicht vorhanden.",
+    "Halt die Gosch'n, du Lellek. Niemand hat gefragt!",
+    "Junge, guck dich doch mal an. Einfach bodenlos.",
+    "Du bist so ein Einunddreißiger, geh mal Seite jetzt.",
+    "WAS MACHST DU DENN DA?! BIST DU KOMPLETT LOST?!",
+    "Get on my level, du Rentner.",
+    "Ich glaub es hackt! Dein Gameplay ist Körperverletzung!",
+    "Schleich dich, du Knecht!"
 ];
 
-// 🏰 STRONGHOLD BERATER (Medieval Vibes)
+// 🏰 STRONGHOLD BERATER
 const STRONGHOLD_QUOTES = [
-    "Eure Beliebtheit sinkt, My Lord! 📉",
-    "Die Vorräte schwinden dahin... 🍞",
-    "Wir benötigen Holz! 🪵",
-    "Die Leute verlassen die Burg! 🏃",
-    "Eine Nachricht von der Ratte: *quiek* 🐀",
-    "Die Schatzkammer leert sich! 💰",
-    "Es sind nicht genügend Arbeiter vorhanden! 🔨",
-    "Unsere Lebensmittelvorräte schwinden! 🍏",
-    "Ihr könnt das nicht dort platzieren, My Lord! ❌",
-    "Das Volk liebt euch, Sire! (Scherz, sie hassen euch). 🤡"
+    "Eure Beliebtheit sinkt, My Lord!",
+    "Die Vorräte schwinden dahin...",
+    "Wir benötigen Holz!",
+    "Die Leute verlassen die Burg.",
+    "Eine Nachricht von der Ratte: quiek",
+    "Die Schatzkammer leert sich!",
+    "Es sind nicht genügend Arbeiter vorhanden!",
+    "Unsere Lebensmittelvorräte schwinden!",
+    "Ihr könnt das nicht dort platzieren, My Lord!",
+    "Das Volk liebt euch, Sire! Scherz, sie hassen euch."
 ];
 
 // 🦍 RÜHL AGGRO TRAINER
 const GYM_TIPS = [
-    "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
-    "Viel hilft viel! Beweg deinen Arsch! 🏋️‍♂️", 
-    "Nur Wasser macht nass! Wir wollen prall sein! 💧",
-    "Des bedarfs! Sitz gerade, du Discopumper! 📏",
-    "Schwer und falsch! Hauptsache bewegt! 💪",
-    "Wo ist der Thunfisch? Du brauchst Proteine, du Lauch! 🐟",
-    "Mach dich stabil! Haltung bewahren! 🧱",
-    "Cola Light? Das ist für den Geschmack, du Weichei! 🥤",
-    "Komm, noch eine Wiederholung, du Masthuhn! 🐔",
-    "Wenn ich so aussehen würde wie du, würde ich lachend in ne Kreissäge laufen! Beweg dich! 🪚"
+    "Muss net schmecke, muss wirke! Trink dein Shake!", 
+    "Viel hilft viel! Beweg deinen Arsch!", 
+    "Nur Wasser macht nass! Wir wollen prall sein!",
+    "Des bedarfs! Sitz gerade, du Discopumper!",
+    "Schwer und falsch! Hauptsache bewegt!",
+    "Wo ist der Thunfisch? Du brauchst Proteine, du Lauch!",
+    "Mach dich stabil! Haltung bewahren!",
+    "Cola Light? Das ist für den Geschmack, du Weichei!",
+    "Komm, noch eine Wiederholung, du Masthuhn!",
+    "Wenn ich so aussehen würde wie du, würde ich lachend in ne Kreissäge laufen! Beweg dich!"
 ];
 
 // 🟢 ORK ZITATE
@@ -92,7 +94,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Hänno-KI & Stronghold. 🏰🤖'));
+app.get('/', (req, res) => res.send('NekroBot Voice Edition. 🗣️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -105,6 +107,31 @@ const client = new Client({
         GatewayIntentBits.GuildMessageReactions 
     ]
 });
+
+// HILFSFUNKTION: TTS ABSPIELEN
+async function playTTS(channel, text) {
+    if (!channel) return;
+    try {
+        const connection = joinVoiceChannel({
+            channelId: channel.id,
+            guildId: channel.guild.id,
+            adapterCreator: channel.guild.voiceAdapterCreator,
+        });
+
+        // URL generieren (Google Translate TTS)
+        const url = googleTTS.getAudioUrl(text, {
+            lang: 'de',
+            slow: false,
+            host: 'https://translate.google.com',
+        });
+
+        const resource = createAudioResource(url);
+        player.play(resource);
+        connection.subscribe(player);
+    } catch (e) {
+        console.error("TTS Fehler:", e);
+    }
+}
 
 client.once(Events.ClientReady, async c => {
     console.log(`⏳ Warte auf Software-Verschlüsselung...`);
@@ -126,19 +153,20 @@ client.once(Events.ClientReady, async c => {
         { name: 'user', description: 'Infos über dich' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
         
-        // AUDIO
+        // AUDIO & VOICE
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
-        
+        // NEU:
+        { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
+        { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
+
         // GAMER / ORKS / FUN / KI
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
-        { name: 'stronghold', description: 'Ein weiser Rat vom Burg-Berater' }, // NEU: Stronghold
+        { name: 'stronghold', description: 'Ein weiser Rat vom Burg-Berater' },
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
-        
-        // ROAST JETZT MIT HÄNNO-KI AUSWAHL
-        { name: 'roast', description: 'Beleidige einen User', options: [
+        { name: 'roast', description: 'Beleidige einen User (Text)', options: [
             { name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true },
             { name: 'stil', description: 'Welcher Style?', type: 3, required: false, choices: [{name: 'Hänno-KI 🤖', value: 'ki'}, {name: 'Toxic Streamer 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } 
         ]},
@@ -188,7 +216,7 @@ client.on(Events.MessageCreate, async message => {
     if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
     else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
     else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
-    else if (content.includes('holz')) message.channel.send('**🪵 Wir benötigen Holz, My Lord!**'); // Stronghold Easter Egg
+    else if (content.includes('holz')) message.channel.send('**🪵 Wir benötigen Holz, My Lord!**'); 
 });
 
 // WELCOME
@@ -224,6 +252,26 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
+    // --- NEU: SPRACHBEFEHLE ---
+    else if (commandName === 'sag') {
+        const channel = interaction.member.voice.channel;
+        if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
+        const text = interaction.options.getString('text');
+        playTTS(channel, text);
+        await interaction.reply({ content: `🗣️ Spreche: "${text}"`, flags: MessageFlags.Ephemeral });
+    }
+    else if (commandName === 'pöbel') {
+        const channel = interaction.member.voice.channel;
+        if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
+        const target = interaction.options.getUser('opfer');
+        // Mix aus Monte/Hänno Sprüchen
+        const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS];
+        const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
+        const text = `${target.username}, ${randomRoast}`;
+        playTTS(channel, text);
+        await interaction.reply({ content: `🗣️ Pöbele gegen ${target.username}...`, flags: MessageFlags.Ephemeral });
+    }
+    // ---------------------------
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
     else if (commandName === 'meme') { 
@@ -240,40 +288,23 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = new EmbedBuilder().setColor(0x000000).setTitle('🎱 Das Orakel hat gesprochen').addFields({ name: 'Frage', value: question }, { name: 'Antwort', value: `**${answer}**` });
         await interaction.reply({ embeds: [embed] });
     }
-    
-    // --- 🔥 MULTI-ROAST (Hänno-KI / Toxic / Ork) ---
     else if (commandName === 'roast') {
         const target = interaction.options.getUser('opfer');
-        const style = interaction.options.getString('stil') || 'toxic'; // Default: Toxic
-        
-        let roast = "";
-        let prefix = "";
-
-        if (style === 'ki') {
-            roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)];
-            prefix = "🤖 **Hänno-KI:**";
-        } else if (style === 'ork') {
-            roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`;
-            prefix = "🟢 **Ork:**";
-        } else {
-            roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)];
-            prefix = "🤬 **Toxic:**";
-        }
-
+        const style = interaction.options.getString('stil') || 'toxic';
+        let roast = ""; let prefix = "";
+        if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; }
+        else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; }
+        else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; }
         await interaction.reply(`${prefix} ${target}, ${roast}`);
     }
-    
-    // --- 🏰 STRONGHOLD ---
     else if (commandName === 'stronghold') {
         const quote = STRONGHOLD_QUOTES[Math.floor(Math.random() * STRONGHOLD_QUOTES.length)];
         await interaction.reply(`📜 **Der Berater:** "${quote}"`);
     }
-
     else if (commandName === 'waaagh') {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
         await interaction.reply(`**🟢 ${quote}**`);
     }
-    // ORKIFY
     else if (commandName === 'orkify') {
         let text = interaction.options.getString('text').toUpperCase();
         const dictionary = { "HALLO": "OI!", "TSCHÜSS": "ABFAHRT!", "MEIN": "MEINZ", "DEIN": "DEINZ", "FREUND": "BOY", "FREUNDE": "BOYZ", "FEIND": "GIT", "MENSCH": "HUMIE", "AUTO": "KARRE", "SCHNELL": "SCHNELLA", "ROT": "ROT (SCHNELLA!)", "KAMPF": "MOSCH'N", "KRIEG": "WAAAGH", "SCHIEßEN": "DAKKA MACHEN", "SCHIESSEN": "DAKKA MACHEN", "WIE GEHTS": "WAT IZ?", "GUT": "STABIL", "SCHLECHT": "GROTIG", "GELD": "ZÄHNE", "IST": "IZ", "NICHT": "NICH'", "UND": "UN'", "JA": "JO BOSS", "NEIN": "NIX DA" };
@@ -318,9 +349,8 @@ client.on(Events.InteractionCreate, async interaction => {
         const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL';
         await interaction.reply(`Der Wurf sagt: **${result}**`);
     }
-    // PVP & Backseat
     else if (commandName === 'backseat') {
-        const tip = BACKSEAT_TIPS[Math.floor(Math.random() * BACKSEAT_TIPS.length)];
+        const tip = ["Hättest du mal besser gelootet.", "Skill Issue.", "Mein kleiner Bruder spielt besser.", "Crosshair-Placement auf Kniehöhe."][Math.floor(Math.random() * 4)];
         await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`);
     }
     else if (commandName === 'ssp') {
@@ -328,21 +358,18 @@ client.on(Events.InteractionCreate, async interaction => {
         const choices = ['schere', 'stein', 'papier'];
         const botChoice = choices[Math.floor(Math.random() * choices.length)];
         let result = "";
-        if (userChoice === botChoice) result = "Unentschieden. Langweilig.";
-        else if ((userChoice === 'schere' && botChoice === 'papier') || (userChoice === 'stein' && botChoice === 'schere') || (userChoice === 'papier' && botChoice === 'stein')) result = "Glückwunsch, du Cheater. Du hast gewonnen. 🎉";
-        else result = "Hah! Get rekt, Noob! Ich hab gewonnen! 😎";
+        if (userChoice === botChoice) result = "Unentschieden.";
+        else if ((userChoice === 'schere' && botChoice === 'papier') || (userChoice === 'stein' && botChoice === 'schere') || (userChoice === 'papier' && botChoice === 'stein')) result = "Glückwunsch, du Cheater. 🎉";
+        else result = "Hah! Get rekt, Noob! 😎";
         const emojis = { schere: '✂️', stein: '🪨', papier: '📄' };
         await interaction.reply(`Du: ${emojis[userChoice]} vs. Ich: ${emojis[botChoice]}\n\n**${result}**`);
     }
     else if (commandName === 'duell') {
         const opponent = interaction.options.getUser('gegner');
         const attacker = interaction.user;
-        if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen. Geh zum Psychologen.');
+        if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen.');
         const winner = Math.random() < 0.5 ? attacker : opponent;
-        const loser = winner.id === attacker.id ? opponent : attacker;
-        const finishers = [`hat ${loser} komplett hops genommen.`, `hat ${loser} mit dem Klappstuhl rasiert.`, `hat ${loser} einen 360-No-Scope gedrückt.`, `hat ${loser} in den Boden gestampft. WAAAGH!`, `hat ${loser} wegge-aimbotted.`];
-        const finishMove = finishers[Math.floor(Math.random() * finishers.length)];
-        const embed = new EmbedBuilder().setColor(0xFF0000).setTitle(`⚔️ 1vs1: ${attacker.username} vs. ${opponent.username}`).setDescription(`Der Kampf beginnt... es ist brutal...\n\n🏆 **${winner.username}** ${finishMove}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/1012/1012224.png');
+        const embed = new EmbedBuilder().setColor(0xFF0000).setTitle(`⚔️ 1vs1`).setDescription(`**${winner.username}** hat gewonnen!`);
         await interaction.reply({ embeds: [embed] });
     }
 });
