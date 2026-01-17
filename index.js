@@ -18,7 +18,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Sodium Native. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot Final. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -34,7 +34,7 @@ const client = new Client({
 client.once(Events.ClientReady, async c => {
     console.log(`✅ ${c.user.tag} ist online.`);
     
-    // Debug Report: Prüfen ob sodium-native jetzt da ist!
+    // Debug Report
     console.log(generateDependencyReport());
 
     // SoundCloud Auth
@@ -112,3 +112,41 @@ client.on(Events.InteractionCreate, async interaction => {
                 const info = search[0];
                 stream = await play.stream_from_info(info);
                 title = info.name; url = info.url;
+            }
+            
+            const resource = createAudioResource(stream.stream, { inputType: stream.type });
+            player.play(resource);
+            connection.subscribe(player);
+
+            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
+        } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
+    }
+    else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
+    else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
+    else if (commandName === 'meme') { const res = await axios.get('https://meme-api.com/gimme/ich_iel'); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url)] }); }
+    else if (commandName === 'ping') interaction.reply('Pong!');
+    else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
+    else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
+});
+
+async function checkTwitch() {
+    try {
+        const tokenResponse = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`);
+        const accessToken = tokenResponse.data.access_token;
+        const streamResponse = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER_LOGIN}`, { headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } });
+        const data = streamResponse.data.data;
+        if (data && data.length > 0) {
+            if (!isLive) {
+                isLive = true;
+                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); 
+                if (channel) {
+                    const streamInfo = data[0];
+                    channel.send({ content: `@everyone RIPtzchen live!`, embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle(streamInfo.user_name).setURL(`https://twitch.tv/${TWITCH_USER_LOGIN}`).setDescription(streamInfo.title).setImage(streamInfo.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${Date.now()}`)] });
+                    client.user.setActivity('Stream', { type: 3 }); 
+                }
+            }
+        } else { if (isLive) { isLive = false; client.user.setActivity('Chat', { type: 0 }); } }
+    } catch (e) { console.error('Twitch Check Fehler:', e.message); }
+}
+
+client.login(process.env.DISCORD_TOKEN);
