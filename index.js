@@ -1,10 +1,10 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
-const sodium = require('libsodium-wrappers'); // <--- Der Retter in der Not
+const sodium = require('libsodium-wrappers'); 
 
 // --- KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -19,7 +19,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Ultimate. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot Force Sodium. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -33,17 +33,19 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, async c => {
-    console.log(`⏳ Warte auf Verschlüsselung...`);
-    await sodium.ready; // <--- HIER WARTEN WIR!
-    console.log(`🔐 Verschlüsselung geladen!`);
+    console.log(`⏳ Warte auf Sodium...`);
+    await sodium.ready;
+    console.log(`🔐 Sodium geladen!`);
+    
+    // Debug Report: Zeig uns, was geladen ist!
+    console.log(generateDependencyReport());
 
     console.log(`✅ ${c.user.tag} ist online.`);
     
-    // SoundCloud Auth
     try {
         const client_id = await play.getFreeClientID();
         await play.setToken({ soundcloud: { client_id: client_id } });
-        console.log(`✅ SoundCloud Auth OK (ID: ${client_id})`);
+        console.log(`✅ SoundCloud ID: ${client_id}`);
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
@@ -106,7 +108,7 @@ client.on(Events.InteractionCreate, async interaction => {
                         const ytInfo = await play.video_info(query);
                         stream = await play.stream_from_info(ytInfo);
                         title = ytInfo.video_details.title; url = ytInfo.video_details.url;
-                     } catch (e) { return interaction.editReply('YouTube blockt (429). Nimm SoundCloud!'); }
+                     } catch (e) { return interaction.editReply('YouTube (429) blockt. Nimm SoundCloud.'); }
                 }
             } else {
                 const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
