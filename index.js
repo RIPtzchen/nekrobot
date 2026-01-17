@@ -24,16 +24,20 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
-// 🔥 ROAST
+// 🔥 ELOTRIX & MONTE ROASTS (Toxic Edition)
 const ROASTS = [
-    "dein Stammbaum ist ein Kreis.", 
-    "ich würde dich beleidigen, aber die Natur war schneller.",
-    "du bist der Grund, warum Aliens nicht mit uns reden.",
-    "wenn Dummheit leuchten würde, wärst du die Sonne.",
-    "deine K/D ist niedriger als dein IQ.",
-    "du bist wie eine Wolke: Wenn du dich verziehst, wird der Tag schön.",
-    "wurdest du auf der Autobahn geboren? Das ist nämlich ein Unfall.",
-    "spar dir die Luft, du verschwendest Sauerstoff."
+    "Digga, du bist so ein Bot, lösch dich einfach. 🤖",
+    "Was für ein Schmutz-Move. Geh Fortnite spielen! 🚮",
+    "Bruder, dein Aim ist wie dein IQ: Nicht vorhanden. 📉",
+    "Halt die Gosch'n, du Lellek. Niemand hat gefragt! 🤫",
+    "Junge, guck dich doch mal an. Einfach bodenlos. 🕳️",
+    "Du bist so ein 31er, geh mal Seite jetzt. 👉",
+    "WAS MACHST DU DENN DA?! BIST DU KOMPLETT LOST?! 🤬",
+    "Get on my lvl, du Rentner. 👴",
+    "Digga, rede mich nicht an, du NPC. 😐",
+    "Ich glaub es hackt! Dein Gameplay ist Körperverletzung! 🚑",
+    "Junge, du hast so viel Skill wie ein Stück Toastbrot. 🍞",
+    "Schleich dich, du Knecht! 👋"
 ];
 
 // 🦍 RÜHL AGGRO TRAINER
@@ -69,7 +73,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Utility Edition. 🛠️'));
+app.get('/', (req, res) => res.send('NekroBot Monte & Elotrix Mode. 🧢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -100,6 +104,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
+        { name: 'user', description: 'Infos über dich' },
         { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
         
@@ -109,13 +114,13 @@ client.once(Events.ClientReady, async c => {
         
         // --- FUN & TOXIC ---
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
-        { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
+        { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
 
-        // --- 🆕 NÜTZLICHES / UTILITY ---
+        // --- UTILITY ---
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
         { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
@@ -223,7 +228,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`);
     }
 
-    // --- NEUE UTILITY COMMANDS ---
+    // --- UTILITY ---
     else if (commandName === 'serverinfo') {
         const guild = interaction.guild;
         const embed = new EmbedBuilder()
@@ -255,10 +260,10 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'so') {
         const streamer = interaction.options.getString('streamer');
         const embed = new EmbedBuilder()
-            .setColor(0x9146FF) // Twitch Lila
+            .setColor(0x9146FF)
             .setTitle(`📢 SHOUTOUT!`)
             .setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`)
-            .setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); // Twitch Logo
+            .setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png');
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'münze') {
