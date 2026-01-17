@@ -12,7 +12,7 @@ const WELCOME_CHANNEL_ID = '1103895697582993561';
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
-const GYM_CHANNEL_ID     = '1462193628347895899'; // Dein Gym Channel
+const GYM_CHANNEL_ID     = '1462193628347895899'; 
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
@@ -69,7 +69,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Final Clean. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot Utility Edition. 🛠️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -96,23 +96,30 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
-        // Bestehende Befehle
+        // --- STANDARD ---
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
-        { name: 'user', description: 'Infos über dich' },
         { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
+        
+        // --- AUDIO ---
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
+        
+        // --- FUN & TOXIC ---
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
-        
-        // NEUE BEFEHLE (Nur die gewollten)
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
-        { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] }
+        { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
+
+        // --- 🆕 NÜTZLICHES / UTILITY ---
+        { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
+        { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
+        { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
+        { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' }
     ];
 
     await c.application.commands.set(commands);
@@ -182,7 +189,8 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'meme') { const res = await axios.get('https://meme-api.com/gimme/ich_iel'); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url)] }); }
     else if (commandName === 'ping') interaction.reply('Pong!');
     else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
-    else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
+    
+    // --- FUN ---
     else if (commandName === 'orakel') {
         const question = interaction.options.getString('frage');
         const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)];
@@ -213,6 +221,49 @@ client.on(Events.InteractionCreate, async interaction => {
         const sides = interaction.options.getInteger('seiten') || 6;
         const roll = Math.floor(Math.random() * sides) + 1;
         await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`);
+    }
+
+    // --- NEUE UTILITY COMMANDS ---
+    else if (commandName === 'serverinfo') {
+        const guild = interaction.guild;
+        const embed = new EmbedBuilder()
+            .setColor(0x0099FF)
+            .setTitle(`📊 Server-Infos: ${guild.name}`)
+            .setThumbnail(guild.iconURL())
+            .addFields(
+                { name: '👥 Member', value: `${guild.memberCount}`, inline: true },
+                { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
+                { name: '🚀 Boosts', value: `${guild.premiumSubscriptionCount || 0}`, inline: true },
+                { name: '👑 Owner', value: `<@${guild.ownerId}>`, inline: true }
+            );
+        await interaction.reply({ embeds: [embed] });
+    }
+    else if (commandName === 'userinfo') {
+        const user = interaction.options.getUser('user') || interaction.user;
+        const member = await interaction.guild.members.fetch(user.id);
+        const embed = new EmbedBuilder()
+            .setColor(member.displayHexColor)
+            .setTitle(`👤 Infos über ${user.username}`)
+            .setThumbnail(user.displayAvatarURL())
+            .addFields(
+                { name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
+                { name: '📥 Beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false },
+                { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }
+            );
+        await interaction.reply({ embeds: [embed] });
+    }
+    else if (commandName === 'so') {
+        const streamer = interaction.options.getString('streamer');
+        const embed = new EmbedBuilder()
+            .setColor(0x9146FF) // Twitch Lila
+            .setTitle(`📢 SHOUTOUT!`)
+            .setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`)
+            .setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); // Twitch Logo
+        await interaction.reply({ embeds: [embed] });
+    }
+    else if (commandName === 'münze') {
+        const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL';
+        await interaction.reply(`Der Wurf sagt: **${result}**`);
     }
 });
 
