@@ -12,13 +12,11 @@ const WELCOME_CHANNEL_ID = '1103895697582993561';
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
-
-// ✅ GYM-CHANNEL ID (Aggro Trainer):
-const GYM_CHANNEL_ID     = '1462193628347895899'; 
+const GYM_CHANNEL_ID     = '1462193628347895899'; // Dein Gym Channel
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
-// 🎱 ORAKEL ANTWORTEN (Böse)
+// 🎱 ORAKEL
 const ORACLE_ANSWERS = [
     "Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", 
     "404: Motivation not found.", "Ja, aber du wirst es bereuen.", 
@@ -26,7 +24,7 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
-// 🔥 ROAST SPRÜCHE
+// 🔥 ROAST
 const ROASTS = [
     "dein Stammbaum ist ein Kreis.", 
     "ich würde dich beleidigen, aber die Natur war schneller.",
@@ -38,7 +36,7 @@ const ROASTS = [
     "spar dir die Luft, du verschwendest Sauerstoff."
 ];
 
-// 💪 MARKUS RÜHL AGGRO TRAINER 🦍
+// 🦍 RÜHL AGGRO TRAINER
 const GYM_TIPS = [
     "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
     "Viel hilft viel! Beweg deinen Arsch! 🏋️‍♂️", 
@@ -52,12 +50,26 @@ const GYM_TIPS = [
     "Wenn ich so aussehen würde wie du, würde ich lachend in ne Kreissäge laufen! Beweg dich! 🪚"
 ];
 
+// 🟢 WARHAMMER 40K ORK ZITATE
+const ORK_QUOTES = [
+    "WAAAGH!!!",
+    "DAKKA DAKKA DAKKA!",
+    "ROT IS SCHNELLA!",
+    "MEHR DAKKA!",
+    "GELB MACHT BUMM!",
+    "MOSCH'N!",
+    "GRÜN IZ DA BESTE!",
+    "WIA GEH'N JETS KÖPPE EINSCHLAG'N!",
+    "SCHNELLA IHR GITS!",
+    "MEIN SPALTA JUCKT!"
+];
+
 let isLive = false;
 const player = createAudioPlayer(); 
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Rühl Edition. 🦍'));
+app.get('/', (req, res) => res.send('NekroBot Full Package. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -66,7 +78,8 @@ const client = new Client({
         GatewayIntentBits.GuildMembers, 
         GatewayIntentBits.GuildMessages, 
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates 
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildMessageReactions // Wichtig für Votes!
     ]
 });
 
@@ -75,9 +88,6 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
-    // Debug Report
-    console.log(generateDependencyReport());
-
     // SoundCloud Auth
     try {
         const client_id = await play.getFreeClientID();
@@ -86,6 +96,7 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
+        // Bestehende Befehle
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
@@ -95,7 +106,12 @@ client.once(Events.ClientReady, async c => {
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
-        { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] }
+        { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
+        
+        // NEUE BEFEHLE
+        { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
+        { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
+        { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] }
     ];
 
     await c.application.commands.set(commands);
@@ -104,19 +120,16 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER TIMER (Markus Rühl Style)
+    // 💪 AGGRO TRAINER TIMER
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (channel) {
             const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
-            // Rühl braucht Capslock im Titel:
             channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`);
-        } else {
-            console.log("⚠️ Gym-Channel ID falsch oder Bot hat keinen Zugriff!");
         }
     }, 3600000); 
 
-    c.user.setActivity('pumpt Masthühner auf', { type: 3 }); 
+    c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
 // AUTO-MOD
@@ -143,37 +156,23 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.deferReply();
         const channel = interaction.member.voice.channel;
         if (!channel) return interaction.editReply('Geh in Voice!');
-
         const query = interaction.options.getString('song');
         try {
             const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
-            
             let stream; let title; let url;
-
             if (query.startsWith('http')) {
                 if (query.includes('soundcloud.com')) {
-                     const soInfo = await play.soundcloud(query);
-                     stream = await play.stream_from_info(soInfo);
-                     title = soInfo.name; url = soInfo.url;
+                     const soInfo = await play.soundcloud(query); stream = await play.stream_from_info(soInfo); title = soInfo.name; url = soInfo.url;
                 } else {
-                     try {
-                        const ytInfo = await play.video_info(query);
-                        stream = await play.stream_from_info(ytInfo);
-                        title = ytInfo.video_details.title; url = ytInfo.video_details.url;
-                     } catch (e) { return interaction.editReply('YouTube (429) blockt. Nimm SoundCloud.'); }
+                     try { const ytInfo = await play.video_info(query); stream = await play.stream_from_info(ytInfo); title = ytInfo.video_details.title; url = ytInfo.video_details.url; } catch (e) { return interaction.editReply('YouTube (429) blockt. Nimm SoundCloud.'); }
                 }
             } else {
                 const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (search.length === 0) return interaction.editReply('Nix auf SoundCloud gefunden.');
-                const info = search[0];
-                stream = await play.stream_from_info(info);
-                title = info.name; url = info.url;
+                const info = search[0]; stream = await play.stream_from_info(info); title = info.name; url = info.url;
             }
-            
             const resource = createAudioResource(stream.stream, { inputType: stream.type });
-            player.play(resource);
-            connection.subscribe(player);
-
+            player.play(resource); connection.subscribe(player);
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
@@ -194,6 +193,33 @@ client.on(Events.InteractionCreate, async interaction => {
         const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
         await interaction.reply(`${target}, ${roast} 🔥`);
     }
+    // --- NEUE LOGIK ---
+    else if (commandName === 'waaagh') {
+        const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
+        // Sendet das Zitat in fett und grün (so gut es geht in Text)
+        await interaction.reply(`**🟢 ${quote}**`);
+    }
+    else if (commandName === 'vote') {
+        const question = interaction.options.getString('frage');
+        const embed = new EmbedBuilder()
+            .setColor(0x00FF00) // Grün für Orks? Oder Blau? Nehmen wir Neon-Grün.
+            .setTitle('📊 UMFRAGE')
+            .setDescription(`**${question}**`)
+            .setFooter({ text: `Gestartet von ${interaction.user.username}` });
+        
+        const msg = await interaction.reply({ embeds: [embed], fetchReply: true });
+        // Der Bot reagiert selbst, damit Leute nur klicken müssen
+        await msg.react('👍');
+        await msg.react('👎');
+    }
+    else if (commandName === 'avatar') {
+        const user = interaction.options.getUser('user') || interaction.user; // Wenn kein User angegeben, nimm den eigenen
+        const embed = new EmbedBuilder()
+            .setTitle(`Avatar von ${user.username}`)
+            .setColor(0x9146FF)
+            .setImage(user.displayAvatarURL({ dynamic: true, size: 1024 }));
+        await interaction.reply({ embeds: [embed] });
+    }
 });
 
 async function checkTwitch() {
@@ -212,7 +238,7 @@ async function checkTwitch() {
                     client.user.setActivity('Stream', { type: 3 }); 
                 }
             }
-        } else { if (isLive) { isLive = false; client.user.setActivity('pumpt Masthühner auf', { type: 3 }); } }
+        } else { if (isLive) { isLive = false; client.user.setActivity('plant den WAAAGH!', { type: 3 }); } }
     } catch (e) { console.error('Twitch Check Fehler:', e.message); }
 }
 
