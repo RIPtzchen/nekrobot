@@ -4,17 +4,13 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerSta
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
-const sodium = require('libsodium-wrappers'); // <--- DER RETTER
 
 // --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
-
-// DEINE IDs:
 const WELCOME_CHANNEL_ID = '1103895697582993561'; 
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
-
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
 let isLive = false;
@@ -23,7 +19,7 @@ let connection = null;
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Audio-Core Online. 🎧'));
+app.get('/', (req, res) => res.send('NekroBot Core Active. 🎧'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -37,10 +33,6 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, async c => {
-    console.log(`⏳ Warte auf Audio-Verschlüsselung...`);
-    await sodium.ready; // <--- HIER WARTEN WIR AUF DEN DECODER!
-    console.log(`🔐 Audio-System bereit!`);
-
     console.log(`✅ ${c.user.tag} ist online.`);
     
     const commands = [
@@ -64,7 +56,7 @@ client.once(Events.ClientReady, async c => {
     ];
 
     await c.application.commands.set(commands);
-    console.log('🤖 Alle Befehle geladen!');
+    console.log('🤖 Commands geladen.');
 
     checkTwitch();
     setInterval(checkTwitch, 120000); 
@@ -113,7 +105,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator,
             });
 
-            // Kleiner Fix für YouTube
+            // Stream Logik
             let stream;
             let yt_info;
             if (query.startsWith('http')) {
