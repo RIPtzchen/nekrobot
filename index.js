@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
@@ -17,16 +17,39 @@ const GYM_CHANNEL_ID     = '1462193628347895899';
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
-// SPEICHER (Im RAM - resettet bei Neustart des Bots)
-const snipes = new Map(); // Speichert gelöschte Nachrichten
-const afkUsers = new Map(); // Speichert AFK Status
-
 // 🎱 ORAKEL
 const ORACLE_ANSWERS = [
     "Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", 
     "404: Motivation not found.", "Ja, aber du wirst es bereuen.", 
     "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", 
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
+];
+
+// 🧪 RICK SANCHEZ ROASTS (Nihilistisch)
+const RICK_ROASTS = [
+    "Deine Meinung bedeutet mir sehr wenig. Ich hab gesehen, was dich glücklich macht. *Rülps*",
+    "Ich bin eine Gurke! Und selbst als Gurke hab ich mehr IQ als du.",
+    "Hör zu, Jerry... äh [User], geh einfach in deine Ecke und heul leise.",
+    "Wubba Lubba Dub Dub! Das heißt: Ich habe große Schmerzen, weil ich dir zuhören muss.",
+    "Niemand existiert absichtlich. Niemand gehört irgendwohin. Wir werden alle sterben. Geh Fernsehen gucken.",
+    "Du bist wie eine Matheaufgabe: Nervig, kompliziert und niemand braucht dich.",
+    "Ich würde dich ja beleidigen, aber ich glaube, die Natur hat das schon erledigt.",
+    "Deine Dummheit verzerrt die Raum-Zeit-Kontinuum.",
+    "Für dich brauche ich keinen Portal-Gun, um zu verschwinden. Ich geh einfach.",
+    "Wow. Einfach wow. So viel Inkompetenz auf einem Haufen."
+];
+
+// 🌀 PORTAL DIMENSIONEN
+const DIMENSIONS = [
+    "🌌 **Arsch-Welt:** Alles ist voller Ärsche. Und es furzt ständig.",
+    "🍕 **Pizza-Welt:** Menschen essen Telefone, und Sofas bestellen Pizza-Menschen.",
+    "🤖 **Roboter-Welt:** Die Roboter haben gewonnen. Du bist jetzt eine Batterie.",
+    "🤠 **Cowboy-Welt:** Alles schreit. Sogar die Sonne schreit.",
+    "🌽 **Mais-Welt:** Alles ist Mais. Wir sind Mais. Der Planet ist Mais.",
+    "🚽 **Klo-Welt:** Ich... erkläre das lieber nicht.",
+    "🐹 **Hamster-im-Hintern-Welt:** Frag nicht.",
+    "🏰 **Mittelalter-Welt:** Oh warte, das ist nur Brandenburg.",
+    "🎮 **Glitch-Welt:** T-Pose für Dominanz!"
 ];
 
 // 🧱 HELD DER STEINE
@@ -118,10 +141,14 @@ const ORK_QUOTES = [
 
 let isLive = false;
 const player = createAudioPlayer(); 
+// Snipe Cache
+const snipes = new Map();
+// AFK Cache
+const afkUsers = new Map();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Final Boss. 🏆'));
+app.get('/', (req, res) => res.send('NekroBot Multiverse. 🧪'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -171,7 +198,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
         { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
 
-        // CONTENT CREATOR STYLE
+        // CONTENT CREATOR & CHARACTERS
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'held', description: 'Weisheiten vom Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
@@ -179,12 +206,22 @@ client.once(Events.ClientReady, async c => {
         { name: 'waszocken', description: 'Bot entscheidet, welches Game du spielst' },
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
+        
+        // RICK & MORTY
+        { name: 'portal', description: 'Öffne ein Portal in eine andere Dimension 🌀' },
+        { name: 'jerry', description: 'Erkläre jemandem, warum er ein Jerry ist', options: [{ name: 'user', description: 'Wer ist der Jerry?', type: 6, required: true }] },
+
         { name: 'roast', description: 'Beleidige einen User (Text)', options: [
             { name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true },
-            { name: 'stil', description: 'Welcher Style?', type: 3, required: false, choices: [{name: 'Hänno-KI 🤖', value: 'ki'}, {name: 'Toxic Streamer 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } 
+            { name: 'stil', description: 'Welcher Style?', type: 3, required: false, choices: [
+                {name: 'Rick Sanchez 🧪', value: 'rick'}, // NEU
+                {name: 'Hänno-KI 🤖', value: 'ki'}, 
+                {name: 'Toxic Streamer 🤬', value: 'toxic'}, 
+                {name: 'Ork 🟢', value: 'ork'}
+            ] } 
         ]},
         
-        // UTILITY (Die nützlichen Sachen)
+        // UTILITY
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'idee', description: 'Reiche einen Vorschlag ein (Community Abstimmung)', options: [{ name: 'vorschlag', description: 'Deine glorreiche Idee', type: 3, required: true }] },
         { name: 'timer', description: 'Stellt einen Wecker', options: [{ name: 'minuten', description: 'Wie viele Minuten?', type: 4, required: true }, { name: 'grund', description: 'Wofür?', type: 3, required: false }] },
@@ -225,41 +262,26 @@ client.once(Events.ClientReady, async c => {
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// LOGIC: SNIPE LISTENER (Nachricht gelöscht)
+// LOGIC: SNIPE LISTENER
 client.on(Events.MessageDelete, message => {
     if (message.author && !message.author.bot) {
-        snipes.set(message.channel.id, {
-            content: message.content,
-            author: message.author,
-            image: message.attachments.first() ? message.attachments.first().proxyURL : null,
-            timestamp: new Date().getTime()
-        });
+        snipes.set(message.channel.id, { content: message.content, author: message.author, image: message.attachments.first() ? message.attachments.first().proxyURL : null, timestamp: new Date().getTime() });
     }
 });
 
-// PASSIVE ORK REAKTIONEN, AUTO-MOD & AFK CHECK
+// PASSIVE REAKTIONEN
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
     
-    // 1. AFK Check: Ist der Autor wieder da?
-    if (afkUsers.has(message.author.id)) {
-        afkUsers.delete(message.author.id);
-        message.reply(`👋 Willkommen zurück, **${message.author.username}**! AFK-Status entfernt.`);
-    }
+    // AFK Check
+    if (afkUsers.has(message.author.id)) { afkUsers.delete(message.author.id); message.reply(`👋 Willkommen zurück, **${message.author.username}**! AFK-Status entfernt.`); }
+    message.mentions.users.forEach(user => { if (afkUsers.has(user.id)) { message.reply(`🤫 **${user.username}** ist gerade AFK: *"${afkUsers.get(user.id)}"*. Stör nicht!`); } });
 
-    // 2. AFK Check: Wurde ein AFK User erwähnt?
-    message.mentions.users.forEach(user => {
-        if (afkUsers.has(user.id)) {
-            const reason = afkUsers.get(user.id);
-            message.reply(`🤫 **${user.username}** ist gerade AFK: *"${reason}"*. Stör nicht!`);
-        }
-    });
-
-    // 3. Auto-Mod
+    // Auto-Mod
     if (BAD_WORDS.some(word => content.includes(word))) { try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {} }
     
-    // 4. Passive Reaktionen
+    // Passive
     if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
     else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
     else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
@@ -299,7 +321,16 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
-    // --- NEUE FEATURES (Giveaway, AFK, Snipe) ---
+    // --- RICK & MORTY ---
+    else if (commandName === 'portal') {
+        const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)];
+        await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`);
+    }
+    else if (commandName === 'jerry') {
+        const user = interaction.options.getUser('user');
+        await interaction.reply(`${user}, du bist so ein Jerry. Ernsthaft. Kauf dir ein Leben.`);
+    }
+    // --- RESTLICHE BEFEHLE ---
     else if (commandName === 'afk') {
         const reason = interaction.options.getString('grund') || 'Kein Grund angegeben';
         afkUsers.set(interaction.user.id, reason);
@@ -308,44 +339,19 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'snipe') {
         const msg = snipes.get(interaction.channel.id);
         if (!msg) return interaction.reply({ content: 'Hier wurde nichts gelöscht (oder ich hab geschlafen).', flags: MessageFlags.Ephemeral });
-        
-        const embed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() })
-            .setDescription(msg.content || '*Nur Bild*')
-            .setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` });
+        const embed = new EmbedBuilder().setColor(0xFF0000).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Nur Bild*').setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` });
         if (msg.image) embed.setImage(msg.image);
-        
         await interaction.reply({ content: '👀 **Erwischt!** Hier ist die gelöschte Nachricht:', embeds: [embed] });
     }
     else if (commandName === 'giveaway') {
-        const prize = interaction.options.getString('preis');
-        const duration = interaction.options.getInteger('dauer');
-        
-        const embed = new EmbedBuilder()
-            .setColor(0x9146FF)
-            .setTitle('🎁 GIVEAWAY! 🎉')
-            .setDescription(`Preis: **${prize}**\n\nReagiere mit 🎉 um teilzunehmen!\nEndet in: **${duration} Minuten**`)
-            .setFooter({ text: `Host: ${interaction.user.username}` });
-
-        const message = await interaction.reply({ embeds: [embed], fetchReply: true });
-        await message.react('🎉');
-
+        const prize = interaction.options.getString('preis'); const duration = interaction.options.getInteger('dauer');
+        const embed = new EmbedBuilder().setColor(0x9146FF).setTitle('🎁 GIVEAWAY! 🎉').setDescription(`Preis: **${prize}**\n\nReagiere mit 🎉 um teilzunehmen!\nEndet in: **${duration} Minuten**`).setFooter({ text: `Host: ${interaction.user.username}` });
+        const message = await interaction.reply({ embeds: [embed], fetchReply: true }); await message.react('🎉');
         setTimeout(async () => {
-            const fetchedMsg = await interaction.channel.messages.fetch(message.id);
-            const reactions = fetchedMsg.reactions.cache.get('🎉');
-            const users = await reactions.users.fetch();
-            const realUsers = users.filter(u => !u.bot);
-
-            if (realUsers.size === 0) {
-                interaction.channel.send(`Niemand wollte **${prize}**. Traurig.`);
-            } else {
-                const winner = realUsers.random();
-                interaction.channel.send(`🎉 Herzlichen Glückwunsch ${winner}! Du hast **${prize}** gewonnen! 🏆`);
-            }
+            const fetchedMsg = await interaction.channel.messages.fetch(message.id); const reactions = fetchedMsg.reactions.cache.get('🎉'); const users = await reactions.users.fetch(); const realUsers = users.filter(u => !u.bot);
+            if (realUsers.size === 0) { interaction.channel.send(`Niemand wollte **${prize}**. Traurig.`); } else { const winner = realUsers.random(); interaction.channel.send(`🎉 Herzlichen Glückwunsch ${winner}! Du hast **${prize}** gewonnen! 🏆`); }
         }, duration * 60 * 1000);
     }
-    // --------------------------------------------
     else if (commandName === 'idee') {
         const idea = interaction.options.getString('vorschlag');
         const embed = new EmbedBuilder().setColor(0xFFA500).setTitle('💡 Neue Idee!').setDescription(idea).setFooter({ text: `Vorschlag von ${interaction.user.username}` });
@@ -367,7 +373,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const channel = interaction.member.voice.channel;
         if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
         const target = interaction.options.getUser('opfer');
-        const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS];
+        const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS, ...RICK_ROASTS];
         const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
         playTTS(channel, `${target.username}, ${randomRoast}`);
         await interaction.reply({ content: `🗣️ Pöbele gegen ${target.username}...`, flags: MessageFlags.Ephemeral });
@@ -398,6 +404,7 @@ client.on(Events.InteractionCreate, async interaction => {
         let roast = ""; let prefix = "";
         if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; }
         else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; }
+        else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; prefix = "🧪 **Rick:**"; }
         else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; }
         await interaction.reply(`${prefix} ${target}, ${roast}`);
     }
