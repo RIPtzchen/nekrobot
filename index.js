@@ -1,16 +1,16 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, Events, MessageFlags } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, Events, MessageFlags, PermissionFlagsBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 
 // --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
 
-// DEINE IDs (Fest verdrahtet):
+// DEINE IDs:
 const WELCOME_CHANNEL_ID = '1103895697582993561'; 
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
-const AUTO_ROLE_ID       = '1462020482722172958'; // Lag-Opfer Rolle
+const AUTO_ROLE_ID       = '1462020482722172958'; 
 
 // 🤬 AUTO-MOD LISTE
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
@@ -20,7 +20,7 @@ let isLive = false;
 // --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot: System aktiv. 💀'));
+app.get('/', (req, res) => res.send('NekroBot: Wachsam. 👁️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 // --- DISCORD CLIENT ---
@@ -37,14 +37,27 @@ const client = new Client({
 client.once(Events.ClientReady, async c => {
     console.log(`✅ ${c.user.tag} ist online.`);
     
-    // Commands registrieren
+    // ALLE BEFEHLE (Jetzt auch mit /clear)
     const commands = [
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über dich' },
-        { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' }
+        { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' },
+        { 
+            name: 'clear', 
+            description: 'Löscht Nachrichten (Nur für Mods)', 
+            defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
+            options: [{
+                name: 'anzahl',
+                description: 'Wie viele Nachrichten sollen weg?',
+                type: 4, // Integer
+                required: true
+            }]
+        }
     ];
+
+    // Befehle global registrieren
     await c.application.commands.set(commands);
     console.log('🤖 Slash-Commands wurden aktualisiert!');
 
@@ -56,19 +69,14 @@ client.once(Events.ClientReady, async c => {
 // 🛡️ AUTO-MODERATION
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
-
     const content = message.content.toLowerCase();
     const foundBadWord = BAD_WORDS.find(word => content.includes(word));
-
     if (foundBadWord) {
         try {
             await message.delete(); 
             const warning = await message.channel.send(`${message.author}, wasch dir den Mund mit Seife! 🧼`);
             setTimeout(() => warning.delete().catch(e => {}), 5000);
-            console.log(`🛡️ Auto-Mod: Nachricht gelöscht.`);
-        } catch (err) {
-            console.error('Fehler beim Löschen:', err);
-        }
+        } catch (err) { console.error('Auto-Mod Fehler:', err); }
     }
 });
 
@@ -92,7 +100,6 @@ client.on(Events.GuildMemberAdd, async member => {
             .setTimestamp();
         channel.send({ content: `**ALARM!** ${member} hat die Barriere durchbrochen!`, embeds: [welcomeEmbed] });
     }
-
     try {
         const role = member.guild.roles.cache.get(AUTO_ROLE_ID);
         if (role) await member.roles.add(role);
@@ -104,23 +111,41 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
-    if (commandName === 'meme') {
+    // 🧹 CLEAR COMMAND (NEU)
+    if (commandName === 'clear') {
+        const amount = interaction.options.getInteger('anzahl');
+        
+        if (amount < 1 || amount > 100) {
+            return interaction.reply({ content: 'Bitte eine Zahl zwischen 1 und 100 eingeben!', flags: MessageFlags.Ephemeral });
+        }
+        
+        // Löschen
+        await interaction.channel.bulkDelete(amount, true).catch(err => {
+            console.error(err);
+            return interaction.reply({ content: 'Fehler beim Löschen (Nachrichten zu alt?)', flags: MessageFlags.Ephemeral });
+        });
+
+        return interaction.reply({ content: `🧹 Habe ${amount} Nachrichten ins Jenseits befördert.`, flags: MessageFlags.Ephemeral });
+    }
+
+    // 🤡 MEME
+    else if (commandName === 'meme') {
         await interaction.deferReply();
         try {
             const res = await axios.get('https://meme-api.com/gimme/ich_iel'); 
             const meme = res.data;
             if(meme.nsfw) return interaction.editReply('Pfui! Das war NSFW. 🔞');
-
             const memeEmbed = new EmbedBuilder()
                 .setColor(0x99AAB5)
                 .setTitle(meme.title)
                 .setURL(meme.postLink)
                 .setImage(meme.url)
                 .setFooter({ text: `👍 ${meme.ups} | r/ich_iel` });
-
             await interaction.editReply({ embeds: [memeEmbed] });
-        } catch (error) { await interaction.editReply('Keine Memes gefunden. Das Internet brennt.'); }
+        } catch (error) { await interaction.editReply('Keine Memes gefunden.'); }
     }
+
+    // --- REST ---
     else if (commandName === 'setup') {
         await interaction.deferReply(); 
         try {
