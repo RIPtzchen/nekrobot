@@ -18,7 +18,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot SoundCloud Radio. 🟠'));
+app.get('/', (req, res) => res.send('NekroBot SC Auth Fixed. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -34,6 +34,21 @@ const client = new Client({
 client.once(Events.ClientReady, async c => {
     console.log(`✅ ${c.user.tag} ist online.`);
     
+    // --- NEU: SoundCloud Ausweis holen ---
+    try {
+        console.log('🔑 Hole SoundCloud ID...');
+        const client_id = await play.getFreeClientID();
+        await play.setToken({
+            soundcloud: {
+                client_id: client_id
+            }
+        });
+        console.log(`✅ SoundCloud Auth erfolgreich! (ID: ${client_id})`);
+    } catch (err) {
+        console.error('⚠️ SoundCloud Auth fehlgeschlagen:', err.message);
+    }
+    // -------------------------------------
+
     const commands = [
         { name: 'setup', description: 'Zeigt dein PC-Setup' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
@@ -86,27 +101,27 @@ client.on(Events.InteractionCreate, async interaction => {
             let title;
             let url;
 
-            // Logik: Wir priorisieren SoundCloud
+            // Priorität: SoundCloud
             if (query.startsWith('http')) {
-                // Wenn es ein Link ist, prüfen wir was es ist
-                if (play.so_validate(query) === 'track') {
+                // Check ob SC Link
+                if (query.includes('soundcloud.com')) {
                      const soInfo = await play.soundcloud(query);
                      stream = await play.stream_from_info(soInfo);
                      title = soInfo.name;
                      url = soInfo.url;
                 } else {
-                     // Versuch YouTube (wird wsl. blockiert, aber einen Versuch ist es wert)
+                     // Fallback YouTube (Risiko 429)
                      try {
                         const ytInfo = await play.video_info(query);
                         stream = await play.stream_from_info(ytInfo);
                         title = ytInfo.video_details.title;
                         url = ytInfo.video_details.url;
                      } catch (e) {
-                        return interaction.editReply('YouTube blockt meine IP (Error 429). Versuch SoundCloud!');
+                        return interaction.editReply('YouTube blockt (429) & Link ist kein SoundCloud. 🤷‍♂️');
                      }
                 }
             } else {
-                // Bei normaler Suche -> Immer SoundCloud!
+                // Suche immer auf SoundCloud
                 const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
                 if (search.length === 0) return interaction.editReply('Nix auf SoundCloud gefunden.');
                 
@@ -121,14 +136,37 @@ client.on(Events.InteractionCreate, async interaction => {
             connection.subscribe(player);
 
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
-        } catch (error) { console.error(error); await interaction.editReply('Fehler beim Abspielen.'); }
+        } catch (error) { 
+            console.error(error); 
+            await interaction.editReply('Fehler: ' + error.message); 
+        }
     }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
     else if (commandName === 'meme') { const res = await axios.get('https://meme-api.com/gimme/ich_iel'); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url)] }); }
     else if (commandName === 'ping') interaction.reply('Pong!');
+    else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
+    else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
 });
 
-async function checkTwitch() { /* Twitch Code bleibt gleich */ }
+async function checkTwitch() {
+    try {
+        const tokenResponse = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`);
+        const accessToken = tokenResponse.data.access_token;
+        const streamResponse = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER_LOGIN}`, { headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, 'Authorization': `Bearer ${accessToken}` } });
+        const data = streamResponse.data.data;
+        if (data && data.length > 0) {
+            if (!isLive) {
+                isLive = true;
+                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); 
+                if (channel) {
+                    const streamInfo = data[0];
+                    channel.send({ content: `@everyone RIPtzchen live!`, embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle(streamInfo.user_name).setURL(`https://twitch.tv/${TWITCH_USER_LOGIN}`).setDescription(streamInfo.title).setImage(streamInfo.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${Date.now()}`)] });
+                    client.user.setActivity('Stream', { type: 3 }); 
+                }
+            }
+        } else { if (isLive) { isLive = false; client.user.setActivity('Chat', { type: 0 }); } }
+    } catch (e) { console.error('Twitch Check Fehler:', e.message); }
+}
 
 client.login(process.env.DISCORD_TOKEN);
