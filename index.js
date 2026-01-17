@@ -10,7 +10,7 @@ let isLive = false;
 // --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot TTV Edition ist online! 🟣'));
+app.get('/', (req, res) => res.send('NekroBot ist bereit für Seelen! 💀'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 // --- DISCORD CLIENT ---
@@ -41,21 +41,24 @@ async function checkTwitch() {
                 if (channel) {
                     const streamInfo = data[0];
                     const liveEmbed = new EmbedBuilder()
-                        .setColor(0x9146FF)
+                        .setColor(0x9146FF) // Twitch Lila (bleibt so)
                         .setTitle(`🚨 ALARM: ${streamInfo.user_name} ist LIVE!`)
                         .setURL(`https://twitch.tv/${TWITCH_USER_LOGIN}`)
                         .setDescription(`**${streamInfo.title}**\n\nAb in den Stream!`)
                         .setImage(streamInfo.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${Date.now()}`)
                         .setTimestamp();
-                    channel.send({ content: `@everyone RIPtzchen ist on air! 🎥`, embeds: [liveEmbed] });
-                    client.user.setActivity('Riptzchen im Stream zu', { type: 3 }); 
+                    channel.send({ content: `@everyone RIPtzchen sammelt jetzt Seelen! 🎥`, embeds: [liveEmbed] });
+                    
+                    // Status während Stream
+                    client.user.setActivity('RIPtzchen im Stream zu', { type: 3 }); 
                 }
             }
         } else {
             if (isLive) {
                 isLive = false;
                 console.log(`⚫ ${TWITCH_USER_LOGIN} ist offline.`);
-                client.user.setActivity('Riptzchens RTX 5070 beim Rendern zu', { type: 3 });
+                // Status wenn Offline: DEIN NEUER TEXT
+                client.user.setActivity('Sammelt Seelen im Chat', { type: 0 }); // type 0 = "Spielt ..."
             }
         }
     } catch (error) {
@@ -68,6 +71,9 @@ client.once(Events.ClientReady, c => {
     console.log(`✅ ${c.user.tag} ist online.`);
     checkTwitch();
     setInterval(checkTwitch, 120000); // Alle 2 Min
+    
+    // Status beim Start setzen
+    c.user.setActivity('Sammelt Seelen im Chat', { type: 0 });
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -82,7 +88,7 @@ client.on(Events.InteractionCreate, async interaction => {
             const response = await axios.get(url);
             const data = response.data;
             const setupEmbed = new EmbedBuilder()
-                .setColor(0x00FF00)
+                .setColor(0x8B0000) // <--- DUNKLES NEKROMANTEN-ROT 🩸
                 .setTitle(`🖥️ ${data.pc_name || 'Setup'}`)
                 .setDescription(`*${data.status}*\nBesitzer: **${data.owner}**`)
                 .setThumbnail('https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png')
@@ -98,7 +104,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // --- COMMAND: PING ---
     else if (commandName === 'ping') {
-        await interaction.reply('Pong! 🏓 (Cloud-Server läuft)');
+        await interaction.reply('Pong! 🏓 (Die Seelen sind sicher)');
     }
 
     // --- COMMAND: WEBSITE ---
@@ -111,7 +117,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // --- COMMAND: USER ---
     else if (commandName === 'user') {
-        await interaction.reply(`Du bist ${interaction.user.username} und heute gut drauf!`);
+        await interaction.reply(`Ich sehe dich, ${interaction.user.username}... 👁️`);
     }
 });
 
