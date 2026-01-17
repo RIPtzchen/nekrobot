@@ -73,7 +73,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Monte & Elotrix Mode. 🧢'));
+app.get('/', (req, res) => res.send('NekroBot Gamer & Ork Edition. 🟢🎮'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -105,17 +105,20 @@ client.once(Events.ClientReady, async c => {
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über dich' },
-        { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
         
         // --- AUDIO ---
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
         
+        // --- GAMER & ORKS ---
+        { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
+        { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
+        { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
+        
         // --- FUN & TOXIC ---
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         { name: 'roast', description: 'Beleidige einen User (Monte/Elotrix Style)', options: [{ name: 'opfer', description: 'Wen soll es treffen?', type: 6, required: true }] },
-        { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
         { name: 'vote', description: 'Starte eine Umfrage', options: [{ name: 'frage', description: 'Was sollen die Leute entscheiden?', type: 3, required: true }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
@@ -145,11 +148,26 @@ client.once(Events.ClientReady, async c => {
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// AUTO-MOD
+// MESSAGE HANDLER (Auto-Mod & PASSIVE ORK REAKTIONEN)
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
-    if (BAD_WORDS.some(word => message.content.toLowerCase().includes(word))) {
-        try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); } catch (e) {}
+    
+    const content = message.content.toLowerCase();
+
+    // 1. Auto-Mod
+    if (BAD_WORDS.some(word => content.includes(word))) {
+        try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {}
+    }
+
+    // 2. 🟢 PASSIVE ORK REAKTIONEN (Der Bot mischt sich ein)
+    if (content.includes('rot')) {
+        message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
+    } else if (content.includes('kampf') || content.includes('krieg') || content.includes('war')) {
+        message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
+    } else if (content.includes('ballern') || content.includes('schießen') || content.includes('gun')) {
+        message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
+    } else if (content.includes('leise') || content.includes('ruhe')) {
+        message.channel.send('**🔊 ORKZ SIND NICHT LEISE! WAAAGH!**');
     }
 });
 
@@ -191,9 +209,23 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
     else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
-    else if (commandName === 'meme') { const res = await axios.get('https://meme-api.com/gimme/ich_iel'); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url)] }); }
+    
+    // --- MEME UPGRADE (HandOfMemes = Hänno, Kalle, Sterzik Bubble) ---
+    else if (commandName === 'meme') { 
+        // Wir nehmen HandOfMemes als Hauptquelle für die "Spandau-Bubble"
+        const subreddits = ['HandOfMemes', 'zocken'];
+        const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)];
+        
+        try {
+            const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); 
+            interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); 
+        } catch (e) {
+            interaction.reply('Meme-Server ist down oder hat keine Lust. 🤷‍♂️');
+        }
+    }
     else if (commandName === 'ping') interaction.reply('Pong!');
     else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
+    else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
     
     // --- FUN ---
     else if (commandName === 'orakel') {
@@ -211,6 +243,16 @@ client.on(Events.InteractionCreate, async interaction => {
         const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)];
         await interaction.reply(`**🟢 ${quote}**`);
     }
+    // NEU: ORKIFY
+    else if (commandName === 'orkify') {
+        let text = interaction.options.getString('text').toUpperCase();
+        // Orkische Grammatik anwenden
+        text = text.replace(/IST/g, "IZ");
+        text = text.replace(/MEIN/g, "MEINZ");
+        text = text.replace(/!/g, "!!! WAAAGH!");
+        text = text.replace(/\./g, "!");
+        await interaction.reply(`🗣️ **${text}**`);
+    }
     else if (commandName === 'vote') {
         const question = interaction.options.getString('frage');
         const embed = new EmbedBuilder().setColor(0x00FF00).setTitle('📊 UMFRAGE').setDescription(`**${question}**`).setFooter({ text: `Gestartet von ${interaction.user.username}` });
@@ -227,43 +269,20 @@ client.on(Events.InteractionCreate, async interaction => {
         const roll = Math.floor(Math.random() * sides) + 1;
         await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`);
     }
-
-    // --- UTILITY ---
     else if (commandName === 'serverinfo') {
         const guild = interaction.guild;
-        const embed = new EmbedBuilder()
-            .setColor(0x0099FF)
-            .setTitle(`📊 Server-Infos: ${guild.name}`)
-            .setThumbnail(guild.iconURL())
-            .addFields(
-                { name: '👥 Member', value: `${guild.memberCount}`, inline: true },
-                { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true },
-                { name: '🚀 Boosts', value: `${guild.premiumSubscriptionCount || 0}`, inline: true },
-                { name: '👑 Owner', value: `<@${guild.ownerId}>`, inline: true }
-            );
+        const embed = new EmbedBuilder().setColor(0x0099FF).setTitle(`📊 Server-Infos: ${guild.name}`).setThumbnail(guild.iconURL()).addFields({ name: '👥 Member', value: `${guild.memberCount}`, inline: true }, { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true });
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'userinfo') {
         const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
-        const embed = new EmbedBuilder()
-            .setColor(member.displayHexColor)
-            .setTitle(`👤 Infos über ${user.username}`)
-            .setThumbnail(user.displayAvatarURL())
-            .addFields(
-                { name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
-                { name: '📥 Beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false },
-                { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }
-            );
+        const embed = new EmbedBuilder().setColor(member.displayHexColor).setTitle(`👤 Infos über ${user.username}`).setThumbnail(user.displayAvatarURL()).addFields({ name: '📅 Erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false });
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'so') {
         const streamer = interaction.options.getString('streamer');
-        const embed = new EmbedBuilder()
-            .setColor(0x9146FF)
-            .setTitle(`📢 SHOUTOUT!`)
-            .setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`)
-            .setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png');
+        const embed = new EmbedBuilder().setColor(0x9146FF).setTitle(`📢 SHOUTOUT!`).setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png');
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'münze') {
