@@ -18,7 +18,7 @@ const player = createAudioPlayer();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot v20 Stable. 🎧'));
+app.get('/', (req, res) => res.send('NekroBot SoundCloud Radio. 🟠'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -41,7 +41,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'user', description: 'Infos über dich' },
         { name: 'meme', description: 'Zufälliges Meme von r/ich_iel' },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
-        { name: 'play', description: 'Spielt Musik', options: [{ name: 'song', description: 'YouTube Link', type: 3, required: true }] },
+        { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' }
     ];
 
@@ -82,14 +82,45 @@ client.on(Events.InteractionCreate, async interaction => {
         try {
             const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
             
-            let yt_info = query.startsWith('http') ? await play.video_info(query) : await play.video_info((await play.search(query, { limit: 1 }))[0].url);
-            const stream = await play.stream_from_info(yt_info);
-            const resource = createAudioResource(stream.stream, { inputType: stream.type });
+            let stream;
+            let title;
+            let url;
+
+            // Logik: Wir priorisieren SoundCloud
+            if (query.startsWith('http')) {
+                // Wenn es ein Link ist, prüfen wir was es ist
+                if (play.so_validate(query) === 'track') {
+                     const soInfo = await play.soundcloud(query);
+                     stream = await play.stream_from_info(soInfo);
+                     title = soInfo.name;
+                     url = soInfo.url;
+                } else {
+                     // Versuch YouTube (wird wsl. blockiert, aber einen Versuch ist es wert)
+                     try {
+                        const ytInfo = await play.video_info(query);
+                        stream = await play.stream_from_info(ytInfo);
+                        title = ytInfo.video_details.title;
+                        url = ytInfo.video_details.url;
+                     } catch (e) {
+                        return interaction.editReply('YouTube blockt meine IP (Error 429). Versuch SoundCloud!');
+                     }
+                }
+            } else {
+                // Bei normaler Suche -> Immer SoundCloud!
+                const search = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
+                if (search.length === 0) return interaction.editReply('Nix auf SoundCloud gefunden.');
+                
+                const info = search[0];
+                stream = await play.stream_from_info(info);
+                title = info.name;
+                url = info.url;
+            }
             
+            const resource = createAudioResource(stream.stream, { inputType: stream.type });
             player.play(resource);
             connection.subscribe(player);
 
-            await interaction.editReply(`🎶 Spiele: **${yt_info.video_details.title}**`);
+            await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler beim Abspielen.'); }
     }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
