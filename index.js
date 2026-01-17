@@ -19,7 +19,7 @@ let connection = null;
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Core Active. 🎧'));
+app.get('/', (req, res) => res.send('NekroBot Stable Core. 🎧'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
