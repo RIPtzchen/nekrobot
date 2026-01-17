@@ -3,74 +3,81 @@ const { Client, GatewayIntentBits, EmbedBuilder, Events, MessageFlags } = requir
 const axios = require('axios');
 const express = require('express');
 
-// --- KONFIGURATION ---
+// --- ⚙️ KONFIGURATION (HIER DEINE IDs EINTRAGEN!) ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
-const WELCOME_CHANNEL_ID = '1103895697582993561'; // <--- WICHTIG: Hier ID eintragen!
+const WELCOME_CHANNEL_ID = '1103895697582993561'; // Wo die Nachricht erscheint
+const RULES_CHANNEL_ID   = '1103895697582993562';     // ID von #gesetze
+const ROLES_CHANNEL_ID   = '1103895697582993568';     // ID von #identifizierung
+
 let isLive = false;
 
 // --- FAKE WEBSERVER ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot lauert auf Beute... 💀'));
+app.get('/', (req, res) => res.send('NekroBot Protokoll aktiv. ⛩️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 // --- DISCORD CLIENT ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers, // <--- NEU: Erlaubt uns, neue User zu sehen!
+        GatewayIntentBits.GuildMembers, 
     ]
 });
 
 // --- EVENTS ---
 client.once(Events.ClientReady, c => {
-    console.log(`✅ ${c.user.tag} ist online und hungrig.`);
+    console.log(`✅ ${c.user.tag} ist online.`);
     checkTwitch();
     setInterval(checkTwitch, 120000); 
     c.user.setActivity('Sammelt Seelen im Chat', { type: 0 });
 });
 
-// NEU: EVENT WENN JEMAND JOINT 🚪🏃
+// 💀 NEUES WELCOME PROTOKOLL (Koya Style)
 client.on(Events.GuildMemberAdd, async member => {
     const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (!channel) return;
 
-    // Wir suchen uns einen fiesen Spruch aus
-    const insults = [
-        'Hoffentlich hast du gute Hardware, sonst fliegst du gleich wieder raus.',
-        'Noch eine verlorene Seele für die Sammlung.',
-        'Knie nieder vor Riptzchen!',
-        'Hat sich verlaufen und ist hier gelandet. Pech gehabt.',
-        'Oh nein, nicht noch einer...'
-    ];
-    const randomInsult = insults[Math.floor(Math.random() * insults.length)];
-
     const welcomeEmbed = new EmbedBuilder()
-        .setColor(0x8B0000) // Nekro-Rot
-        .setTitle(`💀 Ein neues Opfer ist eingetroffen!`)
-        .setDescription(`Willkommen in der Hölle, **${member.user.username}**.\n\n*${randomInsult}*`)
-        .setThumbnail(member.user.displayAvatarURL())
+        .setColor(0xFFFF00) // Cyber-Gelb (wie im Screenshot "System Alarm")
+        .setTitle(`⚠️ SYSTEM-ALARM: ENTITY DETECTED ⚠️`)
+        .setDescription(
+            `☣️ Subjekt ${member} ist im **Sektor RIPz** gespawned.\n` +
+            `Status: **Lag-Opfer** (noch nicht verifiziert).\n\n` +
+            `**💀 PROTOKOLL GESTARTET:**\n` +
+            `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n` +
+            `1️⃣ **INHALIEREN:**\n` +
+            `Lies die Gesetze, sonst droht der Exterminatus:\n` +
+            `👉 <#${RULES_CHANNEL_ID}>\n\n` +
+            `2️⃣ **IDENTIFIZIEREN:**\n` +
+            `Wähle deine Mutation (Rollen) hier:\n` +
+            `👉 <#${ROLES_CHANNEL_ID}>\n\n` +
+            `3️⃣ **ESKALIEREN:**\n` +
+            `Meld dich im Chat oder geh in den Voice.\n` +
+            `(Sei kein NPC!)\n\n` +
+            `▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n` +
+            `*Glory to the Cyber-Shinigami.* ⛩️`
+        )
+        .setThumbnail(member.user.displayAvatarURL()) // Zeigt das Bild vom neuen User
         .setTimestamp();
 
-    channel.send({ content: `Hey ${member}, renn solange du noch kannst!`, embeds: [welcomeEmbed] });
+    channel.send({ content: `**ALARM!** ${member} hat die Barriere durchbrochen!`, embeds: [welcomeEmbed] });
 });
 
-// --- TWITCH CHECKER FUNKTION ---
+// --- TWITCH CHECKER ---
 async function checkTwitch() {
     try {
         const tokenResponse = await axios.post(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`);
         const accessToken = tokenResponse.data.access_token;
-
         const streamResponse = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER_LOGIN}`, {
             headers: { 'Client-ID': process.env.TWITCH_CLIENT_ID, 'Authorization': `Bearer ${accessToken}` }
         });
-
         const data = streamResponse.data.data;
 
         if (data && data.length > 0) {
             if (!isLive) {
                 isLive = true;
-                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+                const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); // Das ist der Twitch-Alarm-Channel
                 if (channel) {
                     const streamInfo = data[0];
                     const liveEmbed = new EmbedBuilder()
@@ -93,6 +100,7 @@ async function checkTwitch() {
     } catch (error) { console.error('Twitch Check Fehler:', error.message); }
 }
 
+// --- COMMANDS ---
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
@@ -117,9 +125,9 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [setupEmbed] });
         } catch (e) { await interaction.editReply('Fehler beim Laden.'); }
     }
-    else if (commandName === 'ping') { await interaction.reply('Pong! 🏓 (Die Seelen sind sicher)'); }
+    else if (commandName === 'ping') { await interaction.reply('Pong! 🏓 (System stabil)'); }
     else if (commandName === 'website') { await interaction.reply({ content: 'HQ: https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral }); }
-    else if (commandName === 'user') { await interaction.reply(`Ich sehe dich, ${interaction.user.username}... 👁️`); }
+    else if (commandName === 'user') { await interaction.reply(`Identifiziere Subjekt: ${interaction.user.username}... 👁️`); }
 });
 
 client.login(process.env.DISCORD_TOKEN);
