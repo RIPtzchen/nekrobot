@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
@@ -13,9 +13,15 @@ const WELCOME_CHANNEL_ID = '1103895697582993561';
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
+// ✅ NEUE ID EINGETRAGEN:
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
+
+// SPEICHER
+const snipes = new Map(); 
+const afkUsers = new Map(); 
+const voiceSessions = new Map(); // Speichert, wann User in Voice gegangen sind
 
 // 🎱 ORAKEL
 const ORACLE_ANSWERS = [
@@ -25,52 +31,32 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
-// 🧪 RICK SANCHEZ ROASTS (Deep Dive Edition)
+// 🧪 RICK SANCHEZ ROASTS
 const RICK_ROASTS = [
-    // Gurken Rick
-    "ICH BIN EINE GURKE! Boom! Große Enthüllung! Ich bin eine Gurke. Was machst du so? Ach ja, Versager sein.",
-    "Sieh mich an! Ich bin Gurken-Rick! Und du bist... naja, du bist halt da. Leider.",
-    "Ich habe mich in eine Gurke verwandelt, nur um dieses Gespräch mit dir nicht führen zu müssen.",
-    
-    // Wissenschaftliche Beleidigungen
-    "Hör zu, Morty... äh [User]. Deine Dummheit erzeugt eine eigene Schwerkraft. Du ziehst den IQ des ganzen Servers nach unten.",
+    "ICH BIN EINE GURKE! Boom! Große Enthüllung! Ich bin eine Gurke.",
+    "Hör zu, Morty... äh [User]. Deine Dummheit erzeugt eine eigene Schwerkraft.",
     "Weißt du, was das Problem ist? Dein Gehirn ist wie ein Browser mit 500 Tabs offen, aber keinem Internet.",
-    "Ich könnte dir erklären, warum du falsch liegst, aber dafür bräuchte ich Buntstifte und drei Flaschen Wodka.",
-    "Deine Existenz ist der Beweis, dass das Universum entweder chaotisch ist oder einen sehr schlechten Humor hat.",
     "Mathematisch gesehen ist die Wahrscheinlichkeit, dass du jemals etwas Nützliches beiträgst, gleich Null. *Rülps*",
-    
-    // Nihilismus & General Hate
     "Wubba Lubba Dub Dub! Ich habe große Schmerzen, weil ich deine Nachrichten lesen muss.",
     "Niemand existiert absichtlich. Niemand gehört irgendwohin. Wir werden alle sterben. Also halt die Klappe.",
     "Ich habe Bakterien in meinem Darm gesehen, die ein komplexeres Sozialleben haben als du.",
     "Für dich brauche ich keine Portal-Gun. Ich wünschte einfach, du wärst in einer Dimension ohne WLAN.",
-    "Deine Meinung bedeutet mir sehr wenig. Ich habe gesehen, was dich glücklich macht. Du kaufst Skins in Free-to-Play Games.",
+    "Deine Meinung bedeutet mir sehr wenig. Ich habe gesehen, was dich glücklich macht.",
     "Wow. Einfach wow. Wenn Dummheit Energie wäre, könnten wir mit dir die Zitadelle der Ricks betreiben."
 ];
 
-// 🌀 PORTAL DIMENSIONEN (Erweitert)
+// 🌀 PORTAL DIMENSIONEN
 const DIMENSIONS = [
-    "🌌 **Arsch-Welt:** Alles ist voller Ärsche. Und es furzt ständig. Genau wie deine Argumente.",
-    "🍕 **Pizza-Welt:** Menschen essen Telefone, und Sofas bestellen Pizza-Menschen. Du wärst dort wahrscheinlich der Belag.",
-    "🤖 **Roboter-Welt:** Die Roboter haben gewonnen. Du bist jetzt eine AA-Batterie für einen Toaster.",
-    "🤠 **Schreiende-Sonne-Welt:** Alles schreit. 24 Stunden am Tag. Passt zu deinem Gameplay.",
-    "🌽 **Mais-Welt:** Alles ist Mais. Wir sind Mais. Der Planet ist Mais. Geh mir nicht auf den Keks... oder Mais.",
-    "🐹 **Hamster-im-Hintern-Welt:** Frag nicht. Wir gehen sofort wieder.",
-    "🚽 **Klo-Welt:** Eine Welt, die nur aus Toiletten besteht. Du würdest dich hier wie zuhause fühlen.",
-    "🦟 **Cromulon-Dimension:** ZEIGT MIR, WAS IHR KÖNNT! (Spoiler: Du kannst nichts).",
-    "🐍 **Schlangen-Jazz-Welt:** Tss tss tsss tss. Nur für Intellektuelle, also nichts für dich.",
-    "🪑 **Stuhl-Welt:** Wo Menschen Stühle sind und Stühle auf Menschen sitzen. Verdrehte Welt."
-];
-
-// 🧢 JERRY SPRÜCHE (Für den /jerry Befehl)
-const JERRY_QUOTES = [
-    "Das Universum ist dir egal? Naja, die gute Nachricht ist: Dem Universum bist du auch egal.",
-    "Weißt du, [User], das Leben ist Anstrengung und ich höre auf, wenn ich sterbe. Du hast anscheinend schon aufgehört.",
-    "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.",
-    "Pluto ist ein Planet! Das ist das Niveau deiner wissenschaftlichen Erkenntnisse.",
-    "Du bist wie Jerry Smith: Arbeitslos, unsicher und trägst ein komisches Hemd.",
-    "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!",
-    "Der Wind flüstert... 'Loser'..."
+    "🌌 **Arsch-Welt:** Alles ist voller Ärsche. Und es furzt ständig.",
+    "🍕 **Pizza-Welt:** Menschen essen Telefone, und Sofas bestellen Pizza-Menschen.",
+    "🤖 **Roboter-Welt:** Die Roboter haben gewonnen. Du bist jetzt eine AA-Batterie.",
+    "🤠 **Schreiende-Sonne-Welt:** Alles schreit. 24 Stunden am Tag.",
+    "🌽 **Mais-Welt:** Alles ist Mais. Wir sind Mais. Der Planet ist Mais.",
+    "🐹 **Hamster-im-Hintern-Welt:** Frag nicht.",
+    "🚽 **Klo-Welt:** Eine Welt, die nur aus Toiletten besteht.",
+    "🦟 **Cromulon-Dimension:** ZEIGT MIR, WAS IHR KÖNNT!",
+    "🐍 **Schlangen-Jazz-Welt:** Tss tss tsss tss.",
+    "🪑 **Stuhl-Welt:** Wo Menschen Stühle sind und Stühle auf Menschen sitzen."
 ];
 
 // 🧱 HELD DER STEINE
@@ -80,8 +66,6 @@ const HELD_QUOTES = [
     "Lack gesoffen? Teuer! Das ist ja hanebüchen!",
     "Das ist keine Funktion, das ist ein Abenteuer!",
     "Schaut euch das an... eine Farbseuche!",
-    "Die Rückseite ist nichts vor dem man sich fürchten müsste... sie ist einfach hässlich.",
-    "Das Set ist ein Fest für den Teile-Spender.",
     "Fuchs, du hast die Gans gestohlen... gib sie wieder her!",
     "Wir schauen uns das Elend mal gemeinsam an.",
     "Großartig. Einfach großartig (sarkastisch)."
@@ -164,12 +148,10 @@ const ORK_QUOTES = [
 
 let isLive = false;
 const player = createAudioPlayer(); 
-const snipes = new Map();
-const afkUsers = new Map();
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Rick C-137. 🥒'));
+app.get('/', (req, res) => res.send('NekroBot Rühl Patrol. 🦍'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -200,6 +182,15 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
+    // Beim Start: Prüfen wer schon im Voice ist und Zeit starten
+    c.guilds.cache.forEach(guild => {
+        guild.voiceStates.cache.forEach(vs => {
+            if (vs.channelId && !vs.member.user.bot) {
+                voiceSessions.set(vs.member.id, Date.now());
+            }
+        });
+    });
+    
     try {
         const client_id = await play.getFreeClientID();
         await play.setToken({ soundcloud: { client_id: client_id } });
@@ -228,7 +219,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'orkify', description: 'Übersetzt deinen Text in Ork-Sprache', options: [{ name: 'text', description: 'Was willst du brüllen?', type: 3, required: true }] },
         { name: 'orakel', description: 'Stell dem Bot eine Frage', options: [{ name: 'frage', description: 'Deine Frage', type: 3, required: true }] },
         
-        // RICK & MORTY (Erweitert)
+        // RICK & MORTY
         { name: 'portal', description: 'Öffne ein Portal in eine andere Dimension 🌀' },
         { name: 'jerry', description: 'Zeig jemandem, wo sein Platz ist (ganz unten)', options: [{ name: 'user', description: 'Wer ist der Jerry?', type: 6, required: true }] },
 
@@ -271,14 +262,37 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER TIMER
+    // 💪 AGGRO TRAINER TIMER (90 MINUTEN)
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
-        if (channel) {
-            const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
+        if (!channel) return;
+
+        const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
+        
+        // Checken, wer länger als 90 Min (5400000 ms) im Voice ist
+        const now = Date.now();
+        const lazyUsers = [];
+        voiceSessions.forEach((startTime, userId) => {
+            // Prüfung: Ist der User überhaupt noch im Voice? (Sicherheitshalber)
+            const guild = channel.guild;
+            const member = guild.members.cache.get(userId);
+            
+            // Wenn User im Voice ist UND Zeit > 90 Min
+            if (member && member.voice.channelId && (now - startTime >= 5400000)) {
+                lazyUsers.push(userId);
+            }
+        });
+
+        if (lazyUsers.length > 0) {
+            // Zufälliges Opfer aus den Langzeit-Sitzern auswählen
+            const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
+            channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
+        } else {
+            // Standard Nachricht, wenn alle fleißig waren (oder kurz da sind)
             channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`);
         }
-    }, 3600000); 
+
+    }, 5400000); // 90 Minuten in Millisekunden
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -287,6 +301,21 @@ client.once(Events.ClientReady, async c => {
 client.on(Events.MessageDelete, message => {
     if (message.author && !message.author.bot) {
         snipes.set(message.channel.id, { content: message.content, author: message.author, image: message.attachments.first() ? message.attachments.first().proxyURL : null, timestamp: new Date().getTime() });
+    }
+});
+
+// VOICE STATE TRACKER (Für Rühl Alarm)
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+    const memberId = newState.member.id;
+    if (newState.member.user.bot) return; // Bots ignorieren
+
+    // User tritt Voice bei (war vorher nicht drin)
+    if (!oldState.channelId && newState.channelId) {
+        voiceSessions.set(memberId, Date.now());
+    }
+    // User verlässt Voice komplett
+    else if (oldState.channelId && !newState.channelId) {
+        voiceSessions.delete(memberId);
     }
 });
 
@@ -310,13 +339,6 @@ client.on(Events.MessageCreate, async message => {
     
     // RICK PASSIVE (GURKE)
     if (content.includes('gurke') || content.includes('pickle')) message.channel.send('**🥒 ICH BIN EINE GURKE! GURKEN-RICK!**');
-});
-
-// WELCOME
-client.on(Events.GuildMemberAdd, async member => {
-    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    if (channel) channel.send({ content: `**ALARM!** ${member} ist da!`, embeds: [new EmbedBuilder().setColor(0xFFFF00).setTitle(`⚠️ SYSTEM-ALARM ⚠️`).setDescription(`Subjekt ${member} gespawned.\nLies <#${RULES_CHANNEL_ID}> und hol dir Rollen in <#${ROLES_CHANNEL_ID}>!`).setThumbnail(member.user.displayAvatarURL())] });
-    try { await member.roles.add(AUTO_ROLE_ID); } catch (e) {}
 });
 
 // COMMANDS
@@ -352,10 +374,8 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     else if (commandName === 'jerry') {
         const user = interaction.options.getUser('user');
-        const quote = JERRY_QUOTES[Math.floor(Math.random() * JERRY_QUOTES.length)];
-        // Personalisieren: [User] mit Namen ersetzen, falls im Zitat vorhanden
-        const finalQuote = quote.replace('[User]', user.username);
-        await interaction.reply(`**🧪 Rick zu ${user}:** "${finalQuote}"`);
+        const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"];
+        await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`);
     }
     // --- RESTLICHE BEFEHLE ---
     else if (commandName === 'afk') {
@@ -431,27 +451,10 @@ client.on(Events.InteractionCreate, async interaction => {
         const style = interaction.options.getString('stil') || 'toxic';
         let roast = ""; let prefix = "";
         
-        // Style Auswahl
-        if (style === 'ki') { 
-            roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; 
-            prefix = "🤖 **Hänno-KI:**"; 
-        }
-        else if (style === 'ork') { 
-            roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; 
-            prefix = "🟢 **Ork:**"; 
-        }
-        else if (style === 'rick') { 
-            // Rick Roasts
-            roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)];
-            // Platzhalter [User] ersetzen durch Namen
-            roast = roast.replace('[User]', target.username);
-            prefix = "🧪 **Rick:**"; 
-        }
-        else { 
-            roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; 
-            prefix = "🤬 **Toxic:**"; 
-        }
-        
+        if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; }
+        else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; }
+        else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; roast = roast.replace('[User]', target.username); prefix = "🧪 **Rick:**"; }
+        else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; }
         await interaction.reply(`${prefix} ${target}, ${roast}`);
     }
     else if (commandName === 'stronghold') { const quote = STRONGHOLD_QUOTES[Math.floor(Math.random() * STRONGHOLD_QUOTES.length)]; await interaction.reply(`📜 **Der Berater:** "${quote}"`); }
