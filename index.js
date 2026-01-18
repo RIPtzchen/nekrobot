@@ -1,5 +1,5 @@
 require('dotenv').config();
-// ✅ FIX 1: MessageFlags hinzugefügt
+// ✅ FIX: MessageFlags ist jetzt dabei!
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
 const play = require('play-dl');
@@ -17,6 +17,11 @@ const AUTO_ROLE_ID       = '1462020482722172958';
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
+
+// SPEICHER
+const snipes = new Map();
+const afkUsers = new Map();
+const voiceSessions = new Map();
 
 // 🎱 ORAKEL
 const ORACLE_ANSWERS = [
@@ -144,14 +149,9 @@ const ORK_QUOTES = [
 let isLive = false;
 const player = createAudioPlayer(); 
 
-// ✅ FIX 2: Variablen korrekt initialisiert
-const snipes = new Map();
-const afkUsers = new Map();
-const voiceSessions = new Map();
-
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Fixed. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot Repaired. 🛠️'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -182,11 +182,10 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
+    // Voice Tracker Init
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
-            if (vs.channelId && !vs.member.user.bot) {
-                voiceSessions.set(vs.member.id, Date.now());
-            }
+            if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
         });
     });
     
@@ -196,11 +195,11 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
-        // STANDARD
-        { name: 'setup', description: 'Zeigt dein PC-Setup' },
+        // STANDARD (Restored!)
+        { name: 'setup', description: 'Zeigt dein PC-Setup (Razer Fanboy Edition)' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
-        { name: 'user', description: 'Infos über dich' },
+        { name: 'user', description: 'Infos über einen User (Stalking Mode)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
         
         // AUDIO & VOICE
@@ -209,7 +208,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
         { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
 
-        // CONTENT CREATOR & CHARACTERS
+        // CHARACTERS & CONTENT
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'held', description: 'Weisheiten vom Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
@@ -237,7 +236,6 @@ client.once(Events.ClientReady, async c => {
         { name: 'idee', description: 'Reiche einen Vorschlag ein (Community Abstimmung)', options: [{ name: 'vorschlag', description: 'Deine glorreiche Idee', type: 3, required: true }] },
         { name: 'timer', description: 'Stellt einen Wecker', options: [{ name: 'minuten', description: 'Wie viele Minuten?', type: 4, required: true }, { name: 'grund', description: 'Wofür?', type: 3, required: false }] },
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
-        { name: 'userinfo', description: 'Stalkt einen User (Stats & Rollen)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         
         // GIVEAWAY, AFK, SNIPE
@@ -245,7 +243,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'afk', description: 'Setze deinen Status auf AFK', options: [{ name: 'grund', description: 'Warum bist du weg?', type: 3, required: false }] },
         { name: 'snipe', description: 'Zeigt die letzte gelöschte Nachricht (Exposed!)' },
 
-        // INTERACTION & FUN
+        // FUN
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
         { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
@@ -261,35 +259,28 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER TIMER (90 MINUTEN)
+    // 💪 AGGRO TRAINER TIMER
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
-
         const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
         const now = Date.now();
         const lazyUsers = [];
         voiceSessions.forEach((startTime, userId) => {
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            if (member && member.voice.channelId && (now - startTime >= 5400000)) {
-                lazyUsers.push(userId);
-            }
+            if (member && member.voice.channelId && (now - startTime >= 5400000)) { lazyUsers.push(userId); }
         });
-
         if (lazyUsers.length > 0) {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
-        } else {
-            channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`);
-        }
-
+        } else { channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`); }
     }, 5400000); 
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
 
-// LOGIC: SNIPE LISTENER
+// LOGIC: SNIPE
 client.on(Events.MessageDelete, message => {
     if (message.author && !message.author.bot) {
         snipes.set(message.channel.id, { content: message.content, author: message.author, image: message.attachments.first() ? message.attachments.first().proxyURL : null, timestamp: new Date().getTime() });
@@ -321,6 +312,13 @@ client.on(Events.MessageCreate, async message => {
     if (content.includes('gurke') || content.includes('pickle')) message.channel.send('**🥒 ICH BIN EINE GURKE! GURKEN-RICK!**');
 });
 
+// WELCOME
+client.on(Events.GuildMemberAdd, async member => {
+    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    if (channel) channel.send({ content: `**ALARM!** ${member} ist da!`, embeds: [new EmbedBuilder().setColor(0xFFFF00).setTitle(`⚠️ SYSTEM-ALARM ⚠️`).setDescription(`Subjekt ${member} gespawned.\nLies <#${RULES_CHANNEL_ID}> und hol dir Rollen in <#${ROLES_CHANNEL_ID}>!`).setThumbnail(member.user.displayAvatarURL())] });
+    try { await member.roles.add(AUTO_ROLE_ID); } catch (e) {}
+});
+
 // COMMANDS
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
@@ -347,7 +345,47 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xFF5500).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
-    // --- RICK & MORTY ---
+    
+    // --- 🛠️ RESTORED COMMANDS ---
+    else if (commandName === 'setup') {
+        const embed = new EmbedBuilder()
+            .setColor(0x00FF00)
+            .setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)')
+            .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png') // Razer Logo
+            .addFields(
+                { name: '🐍 Peripherie', value: 'Alles von Razer (Was sonst?)', inline: true },
+                { name: '🖱️ Maus', value: 'Razer Basilisk / Viper', inline: true },
+                { name: '⌨️ Tastatur', value: 'Razer BlackWidow / Huntsman', inline: true },
+                { name: '🎧 Headset', value: 'Razer Kraken / BlackShark', inline: true },
+                { name: '💻 CPU', value: 'High-End Intel/AMD (Ballert)', inline: true },
+                { name: '📺 GPU', value: 'NVIDIA RTX Monster', inline: true }
+            )
+            .setFooter({ text: 'Chroma RGB +100 Skill' });
+        await interaction.reply({ embeds: [embed] });
+    }
+    else if (commandName === 'website') {
+        await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, flags: MessageFlags.Ephemeral });
+    }
+    else if (commandName === 'ping') {
+        await interaction.reply(`🏓 **PONG!**\nBin wach und bereit für Chaos! (Latenz: ${Date.now() - interaction.createdTimestamp}ms)`);
+    }
+    else if (commandName === 'user') { // RESTORED DETAIL VERSION
+        const user = interaction.options.getUser('user') || interaction.user;
+        const member = await interaction.guild.members.fetch(user.id);
+        const embed = new EmbedBuilder()
+            .setColor(member.displayHexColor)
+            .setTitle(`👤 Akte: ${user.username}`)
+            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 }))
+            .addFields(
+                { name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
+                { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false },
+                { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }
+            )
+            .setFooter({ text: 'Stalking Mode: ON' });
+        await interaction.reply({ embeds: [embed] });
+    }
+    // ----------------------------
+
     else if (commandName === 'portal') {
         const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)];
         await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`);
@@ -357,7 +395,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"];
         await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`);
     }
-    // --- RESTLICHE BEFEHLE ---
     else if (commandName === 'afk') {
         const reason = interaction.options.getString('grund') || 'Kein Grund angegeben';
         afkUsers.set(interaction.user.id, reason);
@@ -391,14 +428,14 @@ client.on(Events.InteractionCreate, async interaction => {
     }
     else if (commandName === 'sag') {
         const channel = interaction.member.voice.channel;
-        if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
+        if (!channel) return interaction.reply({ content: 'Geh erst in einen Voice-Channel!', flags: MessageFlags.Ephemeral });
         const text = interaction.options.getString('text');
         playTTS(channel, text);
         await interaction.reply({ content: `🗣️ Spreche: "${text}"`, flags: MessageFlags.Ephemeral });
     }
     else if (commandName === 'pöbel') {
         const channel = interaction.member.voice.channel;
-        if (!channel) return interaction.reply('Geh erst in einen Voice-Channel!');
+        if (!channel) return interaction.reply({ content: 'Geh erst in einen Voice-Channel!', flags: MessageFlags.Ephemeral });
         const target = interaction.options.getUser('opfer');
         const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS, ...RICK_ROASTS];
         const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
@@ -419,9 +456,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)];
         try { const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); interaction.reply({ embeds: [new EmbedBuilder().setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); } catch (e) { interaction.reply('Meme-Server pennt. 😴'); }
     }
-    else if (commandName === 'ping') interaction.reply('Pong!');
-    else if (commandName === 'website') interaction.reply({ content: 'https://riptzchen.github.io/riptzchen-website/', flags: MessageFlags.Ephemeral });
-    else if (commandName === 'user') interaction.reply(`User: ${interaction.user.username}`);
     else if (commandName === 'orakel') {
         const question = interaction.options.getString('frage'); const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)];
         const embed = new EmbedBuilder().setColor(0x000000).setTitle('🎱 Das Orakel hat gesprochen').addFields({ name: 'Frage', value: question }, { name: 'Antwort', value: `**${answer}**` }); await interaction.reply({ embeds: [embed] });
@@ -430,7 +464,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const target = interaction.options.getUser('opfer');
         const style = interaction.options.getString('stil') || 'toxic';
         let roast = ""; let prefix = "";
-        
         if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; }
         else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; }
         else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; roast = roast.replace('[User]', target.username); prefix = "🧪 **Rick:**"; }
@@ -454,7 +487,6 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'avatar') { const user = interaction.options.getUser('user') || interaction.user; const embed = new EmbedBuilder().setTitle(`Avatar von ${user.username}`).setColor(0x9146FF).setImage(user.displayAvatarURL({ dynamic: true, size: 1024 })); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'dice') { const sides = interaction.options.getInteger('seiten') || 6; const roll = Math.floor(Math.random() * sides) + 1; await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`); }
     else if (commandName === 'serverinfo') { const guild = interaction.guild; const embed = new EmbedBuilder().setColor(0x0099FF).setTitle(`📊 Server-Infos: ${guild.name}`).setThumbnail(guild.iconURL()).addFields({ name: '👥 Member', value: `${guild.memberCount}`, inline: true }, { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }); await interaction.reply({ embeds: [embed] }); }
-    else if (commandName === 'userinfo') { const user = interaction.options.getUser('user') || interaction.user; const member = await interaction.guild.members.fetch(user.id); const embed = new EmbedBuilder().setColor(member.displayHexColor).setTitle(`👤 Infos über ${user.username}`).setThumbnail(user.displayAvatarURL()).addFields({ name: '📅 Erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'so') { const streamer = interaction.options.getString('streamer'); const embed = new EmbedBuilder().setColor(0x9146FF).setTitle(`📢 SHOUTOUT!`).setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'münze') { const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL'; await interaction.reply(`Der Wurf sagt: **${result}**`); }
     else if (commandName === 'backseat') { const tip = ["Hättest du mal besser gelootet.", "Skill Issue.", "Mein kleiner Bruder spielt besser.", "Crosshair-Placement auf Kniehöhe."][Math.floor(Math.random() * 4)]; await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`); }
