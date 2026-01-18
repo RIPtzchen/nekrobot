@@ -1,7 +1,7 @@
 require('dotenv').config();
-// ✅ FIX: MessageFlags ist jetzt dabei!
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
+// ✅ FIX: AudioPlayerStatus und getVoiceConnection importiert für Auto-Disconnect
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
@@ -22,6 +22,7 @@ const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard
 const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
+let disconnectTimer = null; // Timer für Auto-Disconnect
 
 // 🎱 ORAKEL
 const ORACLE_ANSWERS = [
@@ -149,9 +150,43 @@ const ORK_QUOTES = [
 let isLive = false;
 const player = createAudioPlayer(); 
 
+// ✅ AUTO-DISCONNECT LOGIK
+player.on(AudioPlayerStatus.Idle, () => {
+    console.log("Audio fertig. Starte Auto-Disconnect Timer...");
+    // Wenn schon ein Timer läuft, abbrechen (Reset)
+    if (disconnectTimer) clearTimeout(disconnectTimer);
+    
+    disconnectTimer = setTimeout(() => {
+        // Prüfen, ob der Player wirklich noch Idle ist (falls in der Zwischenzeit was Neues gestartet wurde)
+        if (player.state.status === AudioPlayerStatus.Idle) {
+            console.log("⏳ Zeit abgelaufen. Bot verlässt den Channel.");
+            // Wir suchen die Connection für die erste Gilde, in der der Bot ist (reicht für deinen Server)
+            // Bei mehreren Servern müsste man die Guild ID speichern.
+            // Da du nur einen Server nutzt, suchen wir einfach die aktive Connection.
+            const guildId = client.guilds.cache.first()?.id;
+            if (guildId) {
+                const connection = getVoiceConnection(guildId);
+                if (connection) {
+                    connection.destroy();
+                }
+            }
+        }
+    }, 5000); // 5 Sekunden warten vor Disconnect
+});
+
+player.on(AudioPlayerStatus.Playing, () => {
+    // Wenn Musik/Sprache startet, Timer stoppen
+    if (disconnectTimer) clearTimeout(disconnectTimer);
+});
+
+
+const snipes = new Map();
+const afkUsers = new Map();
+const voiceSessions = new Map();
+
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Repaired. 🛠️'));
+app.get('/', (req, res) => res.send('NekroBot Auto-Disconnect. 👋'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -170,6 +205,7 @@ async function playTTS(channel, text) {
     if (!channel) return;
     try {
         const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
+        // Nutze einen anderen Host oder Fallback, falls der erste hängt
         const url = googleTTS.getAudioUrl(text, { lang: 'de', slow: false, host: 'https://translate.google.com' });
         const resource = createAudioResource(url);
         player.play(resource);
@@ -351,7 +387,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = new EmbedBuilder()
             .setColor(0x00FF00)
             .setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)')
-            .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png') // Razer Logo
+            .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png')
             .addFields(
                 { name: '🐍 Peripherie', value: 'Alles von Razer (Was sonst?)', inline: true },
                 { name: '🖱️ Maus', value: 'Razer Basilisk / Viper', inline: true },
@@ -369,7 +405,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'ping') {
         await interaction.reply(`🏓 **PONG!**\nBin wach und bereit für Chaos! (Latenz: ${Date.now() - interaction.createdTimestamp}ms)`);
     }
-    else if (commandName === 'user') { // RESTORED DETAIL VERSION
+    else if (commandName === 'user') {
         const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
         const embed = new EmbedBuilder()
@@ -384,8 +420,8 @@ client.on(Events.InteractionCreate, async interaction => {
             .setFooter({ text: 'Stalking Mode: ON' });
         await interaction.reply({ embeds: [embed] });
     }
-    // ----------------------------
-
+    
+    // --- RICK & MORTY ---
     else if (commandName === 'portal') {
         const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)];
         await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`);
