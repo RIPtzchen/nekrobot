@@ -1,5 +1,4 @@
 require('dotenv').config();
-// ✅ FIX: MessageFlags hinzugefügt!
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
@@ -33,7 +32,7 @@ const ORACLE_ANSWERS = [
     "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."
 ];
 
-// 🧪 RICK SANCHEZ
+// 🧪 RICK SANCHEZ ROASTS
 const RICK_ROASTS = [
     "ICH BIN EINE GURKE! Boom! Große Enthüllung! Ich bin eine Gurke.",
     "Hör zu, Morty... äh [User]. Deine Dummheit erzeugt eine eigene Schwerkraft.",
@@ -47,7 +46,7 @@ const RICK_ROASTS = [
     "Wow. Einfach wow. Wenn Dummheit Energie wäre, könnten wir mit dir die Zitadelle der Ricks betreiben."
 ];
 
-// 🌀 PORTAL
+// 🌀 PORTAL DIMENSIONEN
 const DIMENSIONS = [
     "🌌 **Arsch-Welt:** Alles ist voller Ärsche. Und es furzt ständig.",
     "🍕 **Pizza-Welt:** Menschen essen Telefone, und Sofas bestellen Pizza-Menschen.",
@@ -73,7 +72,7 @@ const HELD_QUOTES = [
     "Großartig. Einfach großartig (sarkastisch)."
 ];
 
-// 🎮 GAMES
+// 🎮 GAME VORSCHLÄGE
 const GAME_SUGGESTIONS = [
     { name: "League of Legends", comment: "Weil du Schmerzen liebst." },
     { name: "Warhammer 40k: Darktide", comment: "FÜR DEN IMPERATOR! (Oder WAAAGH!)" },
@@ -87,7 +86,7 @@ const GAME_SUGGESTIONS = [
     { name: "Just Chatting", comment: "Laber die Leute einfach voll." }
 ];
 
-// 🤖 HÄNNO
+// 🤖 HÄNNO-KI ROASTS
 const HANNO_KI_ROASTS = [
     "Ich bin die optimierte Version. Du bist nur Schmutz.",
     "Geringbäcker! Geh mal wieder in die Backstube!",
@@ -100,7 +99,7 @@ const HANNO_KI_ROASTS = [
     "Sieh es ein: Ich bin die Zukunft. Du bist Retro-Müll."
 ];
 
-// 🔥 STREAMER
+// 🔥 STREAMER ROASTS
 const STREAMER_ROASTS = [
     "Digga, du bist so ein Bot, lösch dich einfach.",
     "Was für ein Schmutz-Move. Geh Fortnite spielen!",
@@ -151,7 +150,7 @@ const ORK_QUOTES = [
 let isLive = false;
 const player = createAudioPlayer(); 
 
-// ✅ AUTO-DISCONNECT LOGIK
+// ✅ AUTO-DISCONNECT (Robuster)
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -168,7 +167,7 @@ player.on(AudioPlayerStatus.Playing, () => { if (disconnectTimer) clearTimeout(d
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Fixed. 🩸'));
+app.get('/', (req, res) => res.send('NekroBot Final Fix. 🩸'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -182,13 +181,20 @@ const client = new Client({
     ]
 });
 
-// TTS FUNKTION
+// ✅ TTS FUNKTION (Repariert & Verkürzt)
 async function playTTS(channel, text) {
     if (!channel) return;
     try {
         const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
-        const url = googleTTS.getAudioUrl(text, { lang: 'de', slow: false, host: 'https://translate.google.com' });
+        
+        // WICHTIG: Text kürzen, sonst stürzt Google TTS ab (Limit: 200 Zeichen)
+        const safeText = text.length > 200 ? text.substring(0, 195) + "..." : text;
+        
+        console.log(`TTS Anfrage: ${safeText}`); // Debug Log im Render
+        
+        const url = googleTTS.getAudioUrl(safeText, { lang: 'de', slow: false, host: 'https://translate.google.com' });
         const resource = createAudioResource(url);
+        
         player.play(resource);
         connection.subscribe(player);
     } catch (e) { console.error("TTS Fehler:", e); }
@@ -199,7 +205,6 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
-    // Voice Tracker Init
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
@@ -212,7 +217,7 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
-        // STANDARD (Restored & Detailed)
+        // STANDARD (Blutrot & Detailed)
         { name: 'setup', description: 'Zeigt dein PC-Setup (Razer Fanboy Edition)' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
@@ -225,7 +230,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
         { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
 
-        // CHARACTERS & CONTENT
+        // CHARACTERS
         { name: 'meme', description: 'Gamer Memes (Hänno, Monte, Elotrix & Co.)' },
         { name: 'held', description: 'Weisheiten vom Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Warhammer 40k Ork Schrei!' },
@@ -255,12 +260,10 @@ client.once(Events.ClientReady, async c => {
         { name: 'serverinfo', description: 'Zeigt Statistiken über den Server' },
         { name: 'avatar', description: 'Zeigt das Profilbild eines Users groß an', options: [{ name: 'user', description: 'Von wem?', type: 6, required: false }] },
         
-        // GIVEAWAY, AFK, SNIPE
+        // EXTRAS
         { name: 'giveaway', description: 'Startet ein Giveaway', options: [{ name: 'preis', description: 'Was gibt es zu gewinnen?', type: 3, required: true }, { name: 'dauer', description: 'Dauer in Minuten', type: 4, required: true }] },
         { name: 'afk', description: 'Setze deinen Status auf AFK', options: [{ name: 'grund', description: 'Warum bist du weg?', type: 3, required: false }] },
         { name: 'snipe', description: 'Zeigt die letzte gelöschte Nachricht (Exposed!)' },
-
-        // FUN
         { name: 'so', description: 'Shoutout für einen Streamer', options: [{ name: 'streamer', description: 'Name des Streamers (Twitch)', type: 3, required: true }] },
         { name: 'münze', description: 'Wirf eine Münze (Kopf oder Zahl)' },
         { name: 'dice', description: 'Wirf einen Würfel (W6 Standard)', options: [{ name: 'seiten', description: 'Anzahl der Seiten (Default: 6)', type: 4, required: false }] },
@@ -276,7 +279,7 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER TIMER (90 MINUTEN)
+    // 💪 AGGRO TRAINER
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
@@ -304,7 +307,7 @@ client.on(Events.MessageDelete, message => {
     }
 });
 
-// VOICE STATE TRACKER
+// VOICE STATE
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     const memberId = newState.member.id;
     if (newState.member.user.bot) return; 
@@ -312,7 +315,7 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
-// PASSIVE REAKTIONEN
+// PASSIVE
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
@@ -329,18 +332,12 @@ client.on(Events.MessageCreate, async message => {
     if (content.includes('gurke') || content.includes('pickle')) message.channel.send('**🥒 ICH BIN EINE GURKE! GURKEN-RICK!**');
 });
 
-// WELCOME
-client.on(Events.GuildMemberAdd, async member => {
-    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    if (channel) channel.send({ content: `**ALARM!** ${member} ist da!`, embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`⚠️ SYSTEM-ALARM ⚠️`).setDescription(`Subjekt ${member} gespawned.\nLies <#${RULES_CHANNEL_ID}> und hol dir Rollen in <#${ROLES_CHANNEL_ID}>!`).setThumbnail(member.user.displayAvatarURL())] });
-    try { await member.roles.add(AUTO_ROLE_ID); } catch (e) {}
-});
-
 // COMMANDS
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
+    // --- MUSIK ---
     if (commandName === 'play') {
         await interaction.deferReply();
         const channel = interaction.member.voice.channel;
@@ -363,10 +360,10 @@ client.on(Events.InteractionCreate, async interaction => {
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
     
-    // --- 🛠️ RESTORED & DETAILED COMMANDS ---
+    // --- 🛠️ RESTORED COMMANDS ---
     else if (commandName === 'setup') {
         const embed = new EmbedBuilder()
-            .setColor(EMBED_COLOR) // 🩸
+            .setColor(EMBED_COLOR)
             .setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)')
             .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png')
             .addFields(
@@ -381,19 +378,16 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'website') {
-        // Jetzt wieder mit Kommentar und Link
         await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, flags: MessageFlags.Ephemeral });
     }
     else if (commandName === 'ping') {
-        // Jetzt wieder mit frechem Spruch
         await interaction.reply(`🏓 **PONG!**\nBin wach und bereit für Chaos! (Latenz: ${Date.now() - interaction.createdTimestamp}ms)`);
     }
-    else if (commandName === 'user') { 
-        // Jetzt wieder ausführlich (Stalking Mode)
+    else if (commandName === 'user') {
         const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
         const embed = new EmbedBuilder()
-            .setColor(EMBED_COLOR) // 🩸
+            .setColor(EMBED_COLOR)
             .setTitle(`👤 Akte: ${user.username}`)
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 }))
             .addFields(
@@ -404,8 +398,27 @@ client.on(Events.InteractionCreate, async interaction => {
             .setFooter({ text: 'Stalking Mode: ON' });
         await interaction.reply({ embeds: [embed] });
     }
-    // ----------------------------
-
+    
+    // --- 🟢 RESTLICHE COMMANDS (Mit Defer-Fix für Voice) ---
+    else if (commandName === 'sag') {
+        // WICHTIG: Erst deferren (Wartezeichen), damit Discord nicht meckert
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channel = interaction.member.voice.channel;
+        if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
+        const text = interaction.options.getString('text');
+        playTTS(channel, text);
+        await interaction.editReply({ content: `🗣️ Spreche: "${text}"` });
+    }
+    else if (commandName === 'pöbel') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channel = interaction.member.voice.channel;
+        if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
+        const target = interaction.options.getUser('opfer');
+        const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS, ...RICK_ROASTS];
+        const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
+        playTTS(channel, `${target.username}, ${randomRoast}`);
+        await interaction.editReply({ content: `🗣️ Pöbele gegen ${target.username}...` });
+    }
     else if (commandName === 'portal') {
         const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)];
         await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`);
@@ -445,22 +458,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const minutes = interaction.options.getInteger('minuten'); const reason = interaction.options.getString('grund') || 'Zeit abgelaufen!';
         await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`);
         setTimeout(() => { interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`); }, minutes * 60 * 1000);
-    }
-    else if (commandName === 'sag') {
-        const channel = interaction.member.voice.channel;
-        if (!channel) return interaction.reply({ content: 'Geh erst in einen Voice-Channel!', flags: MessageFlags.Ephemeral });
-        const text = interaction.options.getString('text');
-        playTTS(channel, text);
-        await interaction.reply({ content: `🗣️ Spreche: "${text}"`, flags: MessageFlags.Ephemeral });
-    }
-    else if (commandName === 'pöbel') {
-        const channel = interaction.member.voice.channel;
-        if (!channel) return interaction.reply({ content: 'Geh erst in einen Voice-Channel!', flags: MessageFlags.Ephemeral });
-        const target = interaction.options.getUser('opfer');
-        const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS, ...RICK_ROASTS];
-        const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
-        playTTS(channel, `${target.username}, ${randomRoast}`);
-        await interaction.reply({ content: `🗣️ Pöbele gegen ${target.username}...`, flags: MessageFlags.Ephemeral });
     }
     else if (commandName === 'held') { const quote = HELD_QUOTES[Math.floor(Math.random() * HELD_QUOTES.length)]; await interaction.reply(`🧱 **Held der Steine:** "${quote}"`); }
     else if (commandName === 'waszocken') { const game = GAME_SUGGESTIONS[Math.floor(Math.random() * GAME_SUGGESTIONS.length)]; await interaction.reply(`🎮 **NekroBot empfiehlt:** ${game.name}\n*${game.comment}*`); }
