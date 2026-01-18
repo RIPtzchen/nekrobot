@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
@@ -14,7 +14,7 @@ const RULES_CHANNEL_ID   = '1103895697582993562';
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
-const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT
+const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT (Fest eingestellt)
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
@@ -23,7 +23,7 @@ const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
-let isLive = false; // ✅ WICHTIG!
+let isLive = false; // ✅ WICHTIG: Verhindert den Absturz beim Twitch-Check!
 
 // 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
@@ -40,7 +40,7 @@ const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR
 // --- AUDIO PLAYER ---
 const player = createAudioPlayer();
 
-// Auto-Disconnect
+// Auto-Disconnect (5 Sekunden Delay nach Ende)
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -56,9 +56,10 @@ player.on(AudioPlayerStatus.Idle, () => {
 player.on(AudioPlayerStatus.Playing, () => { if (disconnectTimer) clearTimeout(disconnectTimer); });
 player.on('error', error => { console.error('Audio Player Error:', error.message); });
 
+// --- WEBSERVER (Für UptimeRobot) ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Safe Mode. 🛡️'));
+app.get('/', (req, res) => res.send('NekroBot Alive & Stabil. 🩸'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -72,11 +73,12 @@ const client = new Client({
     ]
 });
 
-// TTS FUNKTION
+// TTS FUNKTION (Stabilisiert)
 async function playTTS(channel, text) {
     if (!channel) return;
     try {
         const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
+        // Text kürzen falls nötig (Google Limit)
         const safeText = text.length > 195 ? text.substring(0, 190) + "..." : text;
         const url = googleTTS.getAudioUrl(safeText, { lang: 'de', slow: false, host: 'https://translate.google.com' });
         const resource = createAudioResource(url);
@@ -94,6 +96,7 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
+    // Voice Tracker Init (stellt sicher, dass Leute im Voice erfasst werden, wenn der Bot neu startet)
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
@@ -149,22 +152,30 @@ client.once(Events.ClientReady, async c => {
     setInterval(checkTwitch, 120000); 
 
     // 💪 AGGRO TRAINER (90 MINUTEN)
+    // Wir checken jede Minute, aber lösen erst aus, wenn jemand 90 Min (5400000 ms) drin ist.
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
         const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
         const now = Date.now();
         const lazyUsers = [];
+        
         voiceSessions.forEach((startTime, userId) => {
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            if (member && member.voice.channelId && (now - startTime >= 5400000)) { lazyUsers.push(userId); }
+            // Prüfen: User noch da? User im Voice? Zeit > 90 Min?
+            if (member && member.voice.channelId && (now - startTime >= 5400000)) { 
+                lazyUsers.push(userId); 
+            }
         });
+
         if (lazyUsers.length > 0) {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
-        } else { channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`); }
-    }, 5400000); // 90 Minuten
+            // Reset timer für das Opfer, damit es nicht jede Minute gespammt wird
+            voiceSessions.set(victimId, Date.now()); 
+        } 
+    }, 60000); // Check jede Minute, ob die 90 Min voll sind.
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -180,7 +191,9 @@ client.on(Events.MessageDelete, message => {
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     const memberId = newState.member.id;
     if (newState.member.user.bot) return; 
+    // User kommt rein
     if (!oldState.channelId && newState.channelId) { voiceSessions.set(memberId, Date.now()); }
+    // User geht raus
     else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
@@ -231,7 +244,6 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.reply({ embeds: [embed] });
         }
         else if (commandName === 'website') {
-            // ✅ SAFE MODE: ephemeral: true
             await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, ephemeral: true });
         }
         else if (commandName === 'ping') {
@@ -240,12 +252,11 @@ client.on(Events.InteractionCreate, async interaction => {
         else if (commandName === 'user') {
             const user = interaction.options.getUser('user') || interaction.user;
             const member = await interaction.guild.members.fetch(user.id);
-            // ✅ FIX: Farbe auf EMBED_COLOR gesetzt
+            // ✅ BLUTROT ERZWINGEN
             const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`👤 Akte: ${user.username}`).setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 })).addFields({ name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }).setFooter({ text: 'Stalking Mode: ON' });
             await interaction.reply({ embeds: [embed] });
         }
         else if (commandName === 'sag') {
-            // ✅ SAFE MODE: ephemeral: true
             await interaction.deferReply({ ephemeral: true });
             const channel = interaction.member.voice.channel;
             if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
@@ -254,7 +265,6 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ content: `🗣️ Spreche: "${text}"` });
         }
         else if (commandName === 'pöbel') {
-            // ✅ SAFE MODE: ephemeral: true
             await interaction.deferReply({ ephemeral: true });
             const channel = interaction.member.voice.channel;
             if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
@@ -306,7 +316,7 @@ async function checkTwitch() {
             if (!isLive) {
                 isLive = true;
                 const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); 
-                // ✅ SAFETY CHECK: Falls Channel-ID falsch ist, stürzt er nicht ab
+                // ✅ SAFETY CHECK
                 if (channel) {
                     const streamInfo = data[0];
                     channel.send({ content: `@everyone RIPtzchen live!`, embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle(streamInfo.user_name).setURL(`https://twitch.tv/${TWITCH_USER_LOGIN}`).setDescription(streamInfo.title).setImage(streamInfo.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${Date.now()}`)] });
