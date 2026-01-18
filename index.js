@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType } = require('discord.js');
+// ✅ FIX 1: MessageFlags hinzugefügt
+const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
@@ -13,15 +14,9 @@ const WELCOME_CHANNEL_ID = '1103895697582993561';
 const RULES_CHANNEL_ID   = '1103895697582993562';     
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
-// ✅ NEUE ID EINGETRAGEN:
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
-
-// SPEICHER
-const snipes = new Map(); 
-const afkUsers = new Map(); 
-const voiceSessions = new Map(); // Speichert, wann User in Voice gegangen sind
 
 // 🎱 ORAKEL
 const ORACLE_ANSWERS = [
@@ -149,9 +144,14 @@ const ORK_QUOTES = [
 let isLive = false;
 const player = createAudioPlayer(); 
 
+// ✅ FIX 2: Variablen korrekt initialisiert
+const snipes = new Map();
+const afkUsers = new Map();
+const voiceSessions = new Map();
+
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Rühl Patrol. 🦍'));
+app.get('/', (req, res) => res.send('NekroBot Fixed. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -182,7 +182,6 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
-    // Beim Start: Prüfen wer schon im Voice ist und Zeit starten
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) {
@@ -268,31 +267,24 @@ client.once(Events.ClientReady, async c => {
         if (!channel) return;
 
         const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
-        
-        // Checken, wer länger als 90 Min (5400000 ms) im Voice ist
         const now = Date.now();
         const lazyUsers = [];
         voiceSessions.forEach((startTime, userId) => {
-            // Prüfung: Ist der User überhaupt noch im Voice? (Sicherheitshalber)
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            
-            // Wenn User im Voice ist UND Zeit > 90 Min
             if (member && member.voice.channelId && (now - startTime >= 5400000)) {
                 lazyUsers.push(userId);
             }
         });
 
         if (lazyUsers.length > 0) {
-            // Zufälliges Opfer aus den Langzeit-Sitzern auswählen
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
         } else {
-            // Standard Nachricht, wenn alle fleißig waren (oder kurz da sind)
             channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`);
         }
 
-    }, 5400000); // 90 Minuten in Millisekunden
+    }, 5400000); 
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -304,19 +296,12 @@ client.on(Events.MessageDelete, message => {
     }
 });
 
-// VOICE STATE TRACKER (Für Rühl Alarm)
+// VOICE STATE TRACKER
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     const memberId = newState.member.id;
-    if (newState.member.user.bot) return; // Bots ignorieren
-
-    // User tritt Voice bei (war vorher nicht drin)
-    if (!oldState.channelId && newState.channelId) {
-        voiceSessions.set(memberId, Date.now());
-    }
-    // User verlässt Voice komplett
-    else if (oldState.channelId && !newState.channelId) {
-        voiceSessions.delete(memberId);
-    }
+    if (newState.member.user.bot) return; 
+    if (!oldState.channelId && newState.channelId) { voiceSessions.set(memberId, Date.now()); }
+    else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
 // PASSIVE REAKTIONEN
@@ -324,20 +309,15 @@ client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
     
-    // AFK Check
     if (afkUsers.has(message.author.id)) { afkUsers.delete(message.author.id); message.reply(`👋 Willkommen zurück, **${message.author.username}**! AFK-Status entfernt.`); }
     message.mentions.users.forEach(user => { if (afkUsers.has(user.id)) { message.reply(`🤫 **${user.username}** ist gerade AFK: *"${afkUsers.get(user.id)}"*. Stör nicht!`); } });
 
-    // Auto-Mod
     if (BAD_WORDS.some(word => content.includes(word))) { try { await message.delete(); message.channel.send(`${message.author}, Maul! 🧼`).then(m => setTimeout(() => m.delete(), 5000)); return; } catch (e) {} }
     
-    // Passive
     if (content.includes('rot')) message.channel.send('**🔴 ROT IZ SCHNELLA!!!**');
     else if (content.includes('kampf') || content.includes('krieg')) message.channel.send('**⚔️ WAAAGH!!! MOSCH\'N!!!**');
     else if (content.includes('ballern')) message.channel.send('**🔫 MEHR DAKKA DAKKA DAKKA!**');
     else if (content.includes('holz')) message.channel.send('**🪵 Wir benötigen Holz, My Lord!**'); 
-    
-    // RICK PASSIVE (GURKE)
     if (content.includes('gurke') || content.includes('pickle')) message.channel.send('**🥒 ICH BIN EINE GURKE! GURKEN-RICK!**');
 });
 
