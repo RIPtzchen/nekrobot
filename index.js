@@ -236,7 +236,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.reply({ embeds: [embed] });
     }
     else if (commandName === 'website') {
-        await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, ephemeral: true });
+        await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, flags: MessageFlags.Ephemeral });
     }
     else if (commandName === 'ping') {
         await interaction.reply(`🏓 **PONG!**\nBin wach und bereit für Chaos! (Latenz: ${Date.now() - interaction.createdTimestamp}ms)`);
@@ -250,7 +250,7 @@ client.on(Events.InteractionCreate, async interaction => {
     
     // --- 🗣️ VOICE COMMANDS ---
     else if (commandName === 'sag') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channel = interaction.member.voice.channel;
         if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
         const text = interaction.options.getString('text');
@@ -258,7 +258,7 @@ client.on(Events.InteractionCreate, async interaction => {
         await interaction.editReply({ content: `🗣️ Spreche: "${text}"` });
     }
     else if (commandName === 'pöbel') {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channel = interaction.member.voice.channel;
         if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
         const target = interaction.options.getUser('opfer');
@@ -272,7 +272,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'portal') { const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)]; await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`); }
     else if (commandName === 'jerry') { const user = interaction.options.getUser('user'); const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"]; await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`); }
     else if (commandName === 'afk') { const reason = interaction.options.getString('grund') || 'Kein Grund angegeben'; afkUsers.set(interaction.user.id, reason); await interaction.reply(`💤 Du bist jetzt **AFK**. Grund: *${reason}*.`); }
-    else if (commandName === 'snipe') { const msg = snipes.get(interaction.channel.id); if (!msg) return interaction.reply({ content: 'Hier wurde nichts gelöscht.', ephemeral: true }); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Nur Bild*').setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` }); if (msg.image) embed.setImage(msg.image); await interaction.reply({ content: '👀 **Erwischt!**', embeds: [embed] }); }
+    else if (commandName === 'snipe') { const msg = snipes.get(interaction.channel.id); if (!msg) return interaction.reply({ content: 'Hier wurde nichts gelöscht.', flags: MessageFlags.Ephemeral }); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Nur Bild*').setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` }); if (msg.image) embed.setImage(msg.image); await interaction.reply({ content: '👀 **Erwischt!**', embeds: [embed] }); }
     else if (commandName === 'giveaway') { const prize = interaction.options.getString('preis'); const duration = interaction.options.getInteger('dauer'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎁 GIVEAWAY! 🎉').setDescription(`Preis: **${prize}**\n\nReagiere mit 🎉 um teilzunehmen!\nEndet in: **${duration} Minuten**`).setFooter({ text: `Host: ${interaction.user.username}` }); const message = await interaction.reply({ embeds: [embed], fetchReply: true }); await message.react('🎉'); setTimeout(async () => { const fetchedMsg = await interaction.channel.messages.fetch(message.id); const reactions = fetchedMsg.reactions.cache.get('🎉'); const users = await reactions.users.fetch(); const realUsers = users.filter(u => !u.bot); if (realUsers.size === 0) { interaction.channel.send(`Niemand wollte **${prize}**. Traurig.`); } else { const winner = realUsers.random(); interaction.channel.send(`🎉 Herzlichen Glückwunsch ${winner}! Du hast **${prize}** gewonnen! 🏆`); } }, duration * 60 * 1000); }
     else if (commandName === 'idee') { const idea = interaction.options.getString('vorschlag'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('💡 Neue Idee!').setDescription(idea).setFooter({ text: `Vorschlag von ${interaction.user.username}` }); const msg = await interaction.reply({ embeds: [embed], fetchReply: true }); await msg.react('✅'); await msg.react('❌'); }
     else if (commandName === 'timer') { const minutes = interaction.options.getInteger('minuten'); const reason = interaction.options.getString('grund') || 'Zeit abgelaufen!'; await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`); setTimeout(() => { interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`); }, minutes * 60 * 1000); }
@@ -280,7 +280,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'waszocken') { const game = GAME_SUGGESTIONS[Math.floor(Math.random() * GAME_SUGGESTIONS.length)]; await interaction.reply(`🎮 **NekroBot empfiehlt:** ${game.name}\n*${game.comment}*`); }
     else if (commandName === 'fakeban') { const target = interaction.options.getUser('user'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🚨 USER BANNED').setDescription(`**${target.username}** wurde permanent vom Server gebannt.`).setFooter({ text: 'Grund: Skill Issue' }); await interaction.reply({ embeds: [embed] }); setTimeout(() => { interaction.editReply({ content: `Spaaaß! ${target} bleibt hier. Du Lellek. 🤡`, embeds: [] }); }, 4000); }
     else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
-    else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', ephemeral: true }); }
+    else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', flags: MessageFlags.Ephemeral }); }
     else if (commandName === 'meme') { const subreddits = ['HandOfMemes', 'zocken', 'ich_iel']; const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)]; try { const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); interaction.reply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); } catch (e) { interaction.reply('Meme-Server pennt. 😴'); } }
     else if (commandName === 'orakel') { const question = interaction.options.getString('frage'); const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)]; const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎱 Das Orakel hat gesprochen').addFields({ name: 'Frage', value: question }, { name: 'Antwort', value: `**${answer}**` }); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'roast') { const target = interaction.options.getUser('opfer'); const style = interaction.options.getString('stil') || 'toxic'; let roast = ""; let prefix = ""; if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; } else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; } else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; roast = roast.replace('[User]', target.username); prefix = "🧪 **Rick:**"; } else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; } await interaction.reply(`${prefix} ${target}, ${roast}`); }
