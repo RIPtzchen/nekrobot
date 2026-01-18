@@ -14,17 +14,18 @@ const RULES_CHANNEL_ID   = '1103895697582993562';
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
-const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT (Wie gewünscht)
+const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
-// SPEICHER & VARIABLEN
+// 💾 SPEICHER & VARIABLEN (Hier fehlte isLive!)
 const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
+let isLive = false; // ✅ WIEDER DA! WICHTIG!
 
-// 🎱 LISTEN (Inhalt)
+// 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
 const RICK_ROASTS = ["ICH BIN EINE GURKE! Boom!", "Hör zu, Morty... äh [User]. Deine Dummheit erzeugt eine eigene Schwerkraft.", "Dein Gehirn ist wie ein Browser mit 500 Tabs offen, aber keinem Internet.", "Mathematisch gesehen ist die Wahrscheinlichkeit, dass du jemals etwas Nützliches beiträgst, gleich Null.", "Wubba Lubba Dub Dub!", "Niemand existiert absichtlich. Niemand gehört irgendwohin. Geh Fernsehen gucken.", "Ich habe Bakterien in meinem Darm gesehen, die ein komplexeres Sozialleben haben als du.", "Für dich brauche ich keine Portal-Gun. Ich wünschte einfach, du wärst weg.", "Deine Meinung bedeutet mir sehr wenig.", "Wow. Einfach wow. So viel Inkompetenz."];
 const DIMENSIONS = ["🌌 **Arsch-Welt:** Alles ist voller Ärsche. Es furzt ständig.", "🍕 **Pizza-Welt:** Sofas bestellen Pizza-Menschen.", "🤖 **Roboter-Welt:** Du bist eine Batterie.", "🤠 **Schreiende-Sonne-Welt:** AAAAAHHHH!!!", "🌽 **Mais-Welt:** Alles ist Mais.", "🐹 **Hamster-im-Hintern-Welt:** Frag nicht.", "🚽 **Klo-Welt:** Eine Welt nur aus Toiletten.", "🦟 **Cromulon-Dimension:** ZEIGT MIR, WAS IHR KÖNNT!", "🐍 **Schlangen-Jazz-Welt:** Tss tss tsss tss.", "🪑 **Stuhl-Welt:** Menschen sind Stühle."];
@@ -36,10 +37,10 @@ const STRONGHOLD_QUOTES = ["Eure Beliebtheit sinkt, My Lord!", "Die Vorräte sch
 const GYM_TIPS = ["Muss net schmecke, muss wirke!", "Viel hilft viel!", "Nur Wasser macht nass! Wir wollen prall sein!", "Des bedarfs!", "Schwer und falsch!", "Wo ist der Thunfisch?", "Mach dich stabil!", "Cola Light? Das ist für den Geschmack!", "Komm, noch eine Wiederholung, du Masthuhn!", "Beweg dich!"];
 const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR DAKKA!", "GELB MACHT BUMM!", "MOSCH'N!", "GRÜN IZ DA BESTE!", "WIA GEH'N JETS KÖPPE EINSCHLAG'N!", "SCHNELLA IHR GITS!", "MEIN SPALTA JUCKT!"];
 
-// --- AUDIO PLAYER & SERVER SETUP ---
+// --- AUDIO PLAYER ---
 const player = createAudioPlayer();
 
-// Auto-Disconnect & Fehlerbehandlung
+// Auto-Disconnect
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -57,7 +58,7 @@ player.on('error', error => { console.error('Audio Player Error:', error.message
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Stable. 🩸'));
+app.get('/', (req, res) => res.send('NekroBot Fixed & Live. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -71,20 +72,14 @@ const client = new Client({
     ]
 });
 
-// --- TTS FUNKTION (Stabilisiert) ---
+// TTS FUNKTION
 async function playTTS(channel, text) {
     if (!channel) return;
     try {
-        const connection = joinVoiceChannel({ 
-            channelId: channel.id, 
-            guildId: channel.guild.id, 
-            adapterCreator: channel.guild.voiceAdapterCreator 
-        });
-        
-        // Text kürzen falls zu lang (Google Limit)
+        const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
+        // Kürzen auf 195 Zeichen, um Google-Fehler zu vermeiden
         const safeText = text.length > 195 ? text.substring(0, 190) + "..." : text;
         const url = googleTTS.getAudioUrl(safeText, { lang: 'de', slow: false, host: 'https://translate.google.com' });
-        
         const resource = createAudioResource(url);
         player.play(resource);
         connection.subscribe(player);
@@ -100,6 +95,7 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
+    // Voice Tracker Init
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
@@ -112,20 +108,15 @@ client.once(Events.ClientReady, async c => {
     } catch (err) { console.error('⚠️ SC Auth Fehler:', err.message); }
 
     const commands = [
-        // STANDARD
         { name: 'setup', description: 'Zeigt dein PC-Setup (Razer Fanboy Edition)' },
         { name: 'ping', description: 'Checkt, ob der Bot wach ist' },
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über einen User (Stalking Mode)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
-        
-        // VOICE
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
         { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
         { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
-
-        // CONTENT
         { name: 'meme', description: 'Gamer Memes' },
         { name: 'held', description: 'Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Ork Schrei!' },
@@ -135,13 +126,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'orakel', description: 'Orakel befragen', options: [{ name: 'frage', description: 'Frage', type: 3, required: true }] },
         { name: 'portal', description: 'Rick & Morty Portal 🌀' },
         { name: 'jerry', description: 'Du bist ein Jerry', options: [{ name: 'user', description: 'Wer?', type: 6, required: true }] },
-
-        { name: 'roast', description: 'Beleidige einen User', options: [
-            { name: 'opfer', description: 'Wen?', type: 6, required: true },
-            { name: 'stil', description: 'Style?', type: 3, required: false, choices: [{name: 'Rick 🧪', value: 'rick'}, {name: 'Hänno 🤖', value: 'ki'}, {name: 'Toxic 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } 
-        ]},
-        
-        // UTILITY
+        { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }, { name: 'stil', description: 'Style?', type: 3, required: false, choices: [{name: 'Rick 🧪', value: 'rick'}, {name: 'Hänno 🤖', value: 'ki'}, {name: 'Toxic 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } ]},
         { name: 'vote', description: 'Umfrage starten', options: [{ name: 'frage', description: 'Frage?', type: 3, required: true }] },
         { name: 'idee', description: 'Idee einreichen', options: [{ name: 'vorschlag', description: 'Idee', type: 3, required: true }] },
         { name: 'timer', description: 'Wecker stellen', options: [{ name: 'minuten', description: 'Minuten', type: 4, required: true }, { name: 'grund', description: 'Grund', type: 3, required: false }] },
@@ -150,8 +135,6 @@ client.once(Events.ClientReady, async c => {
         { name: 'giveaway', description: 'Giveaway starten', options: [{ name: 'preis', description: 'Preis', type: 3, required: true }, { name: 'dauer', description: 'Minuten', type: 4, required: true }] },
         { name: 'afk', description: 'AFK gehen', options: [{ name: 'grund', description: 'Grund', type: 3, required: false }] },
         { name: 'snipe', description: 'Gelöschte Nachricht zeigen' },
-
-        // FUN
         { name: 'so', description: 'Shoutout', options: [{ name: 'streamer', description: 'Name', type: 3, required: true }] },
         { name: 'münze', description: 'Münzwurf' },
         { name: 'dice', description: 'Würfeln', options: [{ name: 'seiten', description: 'Seiten', type: 4, required: false }] },
@@ -167,7 +150,7 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER (90 Min)
+    // 💪 AGGRO TRAINER (90 MINUTEN)
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
@@ -183,7 +166,7 @@ client.once(Events.ClientReady, async c => {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
         } else { channel.send(`**🦍 RÜHL SAGT:** ${randomTip}`); }
-    }, 5400000); 
+    }, 5400000); // 90 Minuten
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -203,7 +186,7 @@ client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
-// PASSIVE
+// PASSIVE REAKTIONEN
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return; 
     const content = message.content.toLowerCase();
@@ -225,7 +208,6 @@ client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName } = interaction;
 
-    // --- 🔊 MUSIK (Safe) ---
     if (commandName === 'play') {
         await interaction.deferReply();
         const channel = interaction.member.voice.channel;
@@ -247,56 +229,22 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         } catch (error) { console.error(error); await interaction.editReply('Fehler: ' + error.message); }
     }
-    
-    // --- 🐍 SETUP (Full Detail) ---
     else if (commandName === 'setup') {
-        const embed = new EmbedBuilder()
-            .setColor(EMBED_COLOR) // 🩸
-            .setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)')
-            .setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png')
-            .addFields(
-                { name: '🐍 Peripherie', value: 'Alles von Razer (Was sonst?)', inline: true },
-                { name: '🖱️ Maus', value: 'Razer Basilisk / Viper', inline: true },
-                { name: '⌨️ Tastatur', value: 'Razer BlackWidow / Huntsman', inline: true },
-                { name: '🎧 Headset', value: 'Razer Kraken / BlackShark', inline: true },
-                { name: '💻 CPU', value: 'High-End Intel/AMD (Ballert)', inline: true },
-                { name: '📺 GPU', value: 'NVIDIA RTX Monster', inline: true }
-            )
-            .setFooter({ text: 'Chroma RGB +100 Skill' });
+        const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)').setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png').addFields({ name: '🐍 Peripherie', value: 'Alles von Razer (Was sonst?)', inline: true }, { name: '🖱️ Maus', value: 'Razer Basilisk / Viper', inline: true }, { name: '⌨️ Tastatur', value: 'Razer BlackWidow / Huntsman', inline: true }, { name: '🎧 Headset', value: 'Razer Kraken / BlackShark', inline: true }, { name: '💻 CPU', value: 'High-End Intel/AMD (Ballert)', inline: true }, { name: '📺 GPU', value: 'NVIDIA RTX Monster', inline: true }).setFooter({ text: 'Chroma RGB +100 Skill' });
         await interaction.reply({ embeds: [embed] });
     }
-
-    // --- 🌐 WEBSITE (Kommentar + Link) ---
     else if (commandName === 'website') {
-        await interaction.reply({ 
-            content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, 
-            ephemeral: true // Sicherer Flag
-        });
+        await interaction.reply({ content: `🌐 **Besuch das Hauptquartier!**\nHier gibt's alle Infos:\n👉 https://riptzchen.github.io/riptzchen-website/`, ephemeral: true });
     }
-
-    // --- 🏓 PING (Mit Spruch) ---
     else if (commandName === 'ping') {
         await interaction.reply(`🏓 **PONG!**\nBin wach und bereit für Chaos! (Latenz: ${Date.now() - interaction.createdTimestamp}ms)`);
     }
-
-    // --- 👤 USER (Stalking Detail) ---
     else if (commandName === 'user') {
         const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
-        const embed = new EmbedBuilder()
-            .setColor(EMBED_COLOR) // 🩸
-            .setTitle(`👤 Akte: ${user.username}`)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 }))
-            .addFields(
-                { name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false },
-                { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false },
-                { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }
-            )
-            .setFooter({ text: 'Stalking Mode: ON' });
+        const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`👤 Akte: ${user.username}`).setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 })).addFields({ name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }).setFooter({ text: 'Stalking Mode: ON' });
         await interaction.reply({ embeds: [embed] });
     }
-    
-    // --- 🗣️ VOICE COMMANDS (Mit Defer Fix) ---
     else if (commandName === 'sag') {
         await interaction.deferReply({ ephemeral: true });
         const channel = interaction.member.voice.channel;
@@ -315,8 +263,6 @@ client.on(Events.InteractionCreate, async interaction => {
         playTTS(channel, `${target.username}, ${randomRoast}`);
         await interaction.editReply({ content: `🗣️ Pöbele gegen ${target.username}...` });
     }
-
-    // --- RESTLICHE COMMANDS ---
     else if (commandName === 'portal') { const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)]; await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`); }
     else if (commandName === 'jerry') { const user = interaction.options.getUser('user'); const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"]; await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`); }
     else if (commandName === 'afk') { const reason = interaction.options.getString('grund') || 'Kein Grund angegeben'; afkUsers.set(interaction.user.id, reason); await interaction.reply(`💤 Du bist jetzt **AFK**. Grund: *${reason}*.`); }
@@ -339,11 +285,11 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'avatar') { const user = interaction.options.getUser('user') || interaction.user; const embed = new EmbedBuilder().setTitle(`Avatar von ${user.username}`).setColor(EMBED_COLOR).setImage(user.displayAvatarURL({ dynamic: true, size: 1024 })); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'dice') { const sides = interaction.options.getInteger('seiten') || 6; const roll = Math.floor(Math.random() * sides) + 1; await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`); }
     else if (commandName === 'serverinfo') { const guild = interaction.guild; const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`📊 Server-Infos: ${guild.name}`).setThumbnail(guild.iconURL()).addFields({ name: '👥 Member', value: `${guild.memberCount}`, inline: true }, { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }); await interaction.reply({ embeds: [embed] }); }
-    else if (commandName === 'so') { const streamer = interaction.options.getString('streamer'); const embed = new EmbedBuilder().setColor(0x9146FF).setTitle(`📢 SHOUTOUT!`).setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); await interaction.reply({ embeds: [embed] }); }
+    else if (commandName === 'so') { const streamer = interaction.options.getString('streamer'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`📢 SHOUTOUT!`).setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); await interaction.reply({ embeds: [embed] }); }
     else if (commandName === 'münze') { const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL'; await interaction.reply(`Der Wurf sagt: **${result}**`); }
     else if (commandName === 'backseat') { const tip = ["Hättest du mal besser gelootet.", "Skill Issue.", "Mein kleiner Bruder spielt besser.", "Crosshair-Placement auf Kniehöhe."][Math.floor(Math.random() * 4)]; await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`); }
     else if (commandName === 'ssp') { const userChoice = interaction.options.getString('wahl'); const choices = ['schere', 'stein', 'papier']; const botChoice = choices[Math.floor(Math.random() * choices.length)]; let result = ""; if (userChoice === botChoice) result = "Unentschieden."; else if ((userChoice === 'schere' && botChoice === 'papier') || (userChoice === 'stein' && botChoice === 'schere') || (userChoice === 'papier' && botChoice === 'stein')) result = "Glückwunsch, du Cheater. 🎉"; else result = "Hah! Get rekt, Noob! 😎"; const emojis = { schere: '✂️', stein: '🪨', papier: '📄' }; await interaction.reply(`Du: ${emojis[userChoice]} vs. Ich: ${emojis[botChoice]}\n\n**${result}**`); }
-    else if (commandName === 'duell') { const opponent = interaction.options.getUser('gegner'); const attacker = interaction.user; if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen.'); const winner = Math.random() < 0.5 ? attacker : opponent; const embed = new EmbedBuilder().setColor(0xFF0000).setTitle(`⚔️ 1vs1`).setDescription(`**${winner.username}** hat gewonnen!`); await interaction.reply({ embeds: [embed] }); }
+    else if (commandName === 'duell') { const opponent = interaction.options.getUser('gegner'); const attacker = interaction.user; if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen.'); const winner = Math.random() < 0.5 ? attacker : opponent; const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`⚔️ 1vs1`).setDescription(`**${winner.username}** hat gewonnen!`); await interaction.reply({ embeds: [embed] }); }
 });
 
 async function checkTwitch() {
