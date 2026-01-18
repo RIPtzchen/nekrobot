@@ -14,16 +14,16 @@ const RULES_CHANNEL_ID   = '1103895697582993562';
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
-const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT
+const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT (Fest eingestellt)
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
-// 💾 SPEICHER & VARIABLEN (Hier fehlte isLive!)
+// 💾 SPEICHER & VARIABLEN
 const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
-let isLive = false; // ✅ WIEDER DA! WICHTIG!
+let isLive = false; // ✅ WICHTIG: Das fehlte und hat den Crash verursacht!
 
 // 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
@@ -40,7 +40,7 @@ const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR
 // --- AUDIO PLAYER ---
 const player = createAudioPlayer();
 
-// Auto-Disconnect
+// Auto-Disconnect (5 Sekunden Delay nach Ende)
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -58,7 +58,7 @@ player.on('error', error => { console.error('Audio Player Error:', error.message
 
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Fixed & Live. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot Alive. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -244,6 +244,7 @@ client.on(Events.InteractionCreate, async interaction => {
     else if (commandName === 'user') {
         const user = interaction.options.getUser('user') || interaction.user;
         const member = await interaction.guild.members.fetch(user.id);
+        // ✅ FIX: Jetzt Blutrot statt Grün!
         const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`👤 Akte: ${user.username}`).setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 })).addFields({ name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }).setFooter({ text: 'Stalking Mode: ON' });
         await interaction.reply({ embeds: [embed] });
     }
@@ -255,6 +256,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
         const text = interaction.options.getString('text');
         playTTS(channel, text);
+        // ✅ WARNING FIX: editReply braucht kein ephemeral mehr
         await interaction.editReply({ content: `🗣️ Spreche: "${text}"` });
     }
     else if (commandName === 'pöbel') {
