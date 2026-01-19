@@ -1,11 +1,11 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+// ✅ AUDIO & MUSIK SIND DRIN, TTS IST RAUS
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
 const express = require('express');
 const sodium = require('libsodium-wrappers');
-const googleTTS = require('google-tts-api');
 
 // --- ⚙️ KONFIGURATION ---
 const TWITCH_USER_LOGIN = 'RIPtzchen'; 
@@ -23,7 +23,7 @@ const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
-let isLive = false; 
+let isLive = false; // ✅ WICHTIG gegen Abstürze
 
 // 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
@@ -36,7 +36,7 @@ const STREAMER_ROASTS = ["Digga, du bist so ein Bot, lösch dich einfach.", "Was
 const STRONGHOLD_QUOTES = ["Eure Beliebtheit sinkt, My Lord!", "Die Vorräte schwinden dahin...", "Wir benötigen Holz!", "Die Leute verlassen die Burg.", "Eine Nachricht von der Ratte: *quiek*", "Die Schatzkammer leert sich!", "Es sind nicht genügend Arbeiter vorhanden!", "Ihr könnt das nicht dort platzieren, My Lord!", "Das Volk liebt euch, Sire! (Scherz)."];
 const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR DAKKA!", "GELB MACHT BUMM!", "MOSCH'N!", "GRÜN IZ DA BESTE!", "WIA GEH'N JETS KÖPPE EINSCHLAG'N!", "SCHNELLA IHR GITS!", "MEIN SPALTA JUCKT!"];
 
-// 🦍 RÜHL LEGENDARY QUOTES (Expanded)
+// 🦍 RÜHL LEGENDARY QUOTES (Massiv erweitert)
 const GYM_TIPS = [
     "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
     "Viel hilft viel! Beweg deinen Arsch! 🏋️‍♂️", 
@@ -59,13 +59,21 @@ const GYM_TIPS = [
     "Reis und Pute, Reis und Pute. Das ist das Geheimnis! 🍚🦃",
     "Geh mir aus der Sonne, du wirfst Schatten auf meinen Bizeps! 💪",
     "Was ist das denn für ein Kindergewicht? Pack was drauf!",
-    "Discopumper-Alarm! Beine trainieren nicht vergessen! 🦵"
+    "Discopumper-Alarm! Beine trainieren nicht vergessen! 🦵",
+    "Bizeps sieht gut aus, aber der Rest ist Kacke! Weiter!",
+    "Schlafen kannste, wenn du tot bist! Jetzt wird gepumpt!",
+    "Was machst du da? Synchronschwimmen oder Hanteltraining?",
+    "Die Hantel wiegt ja nix! Spielzeug!",
+    "Mehr essen! Du fällst ja vom Fleisch!",
+    "Konzentration! Das ist kein Kaffeekränzchen hier!",
+    "Junge, mach dich mal gerade, du hängst da wie ein Schluck Wasser in der Kurve!",
+    "Keine Schmerzen, kein Wachstum! Weitermachen!"
 ];
 
-// --- AUDIO PLAYER ---
+// --- AUDIO PLAYER (Für Musik) ---
 const player = createAudioPlayer();
 
-// Auto-Disconnect
+// Auto-Disconnect (Wenn Musik zu Ende ist)
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -76,14 +84,15 @@ player.on(AudioPlayerStatus.Idle, () => {
                 if (connection) connection.destroy();
             }
         }
-    }, 5000);
+    }, 5000); // 5 Sek warten
 });
 player.on(AudioPlayerStatus.Playing, () => { if (disconnectTimer) clearTimeout(disconnectTimer); });
 player.on('error', error => { console.error('Audio Player Error:', error.message); });
 
+// --- WEBSERVER (UptimeRobot) ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Alive. 🟢'));
+app.get('/', (req, res) => res.send('NekroBot Music + Trainer. 🎶💪'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -97,28 +106,13 @@ const client = new Client({
     ]
 });
 
-// TTS FUNKTION
-async function playTTS(channel, text) {
-    if (!channel) return;
-    try {
-        const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
-        const safeText = text.length > 195 ? text.substring(0, 190) + "..." : text;
-        const url = googleTTS.getAudioUrl(safeText, { lang: 'de', slow: false, host: 'https://translate.google.com' });
-        const resource = createAudioResource(url);
-        player.play(resource);
-        connection.subscribe(player);
-    } catch (e) { 
-        console.error("TTS Fehler:", e); 
-        const connection = getVoiceConnection(channel.guild.id);
-        if(connection) connection.destroy();
-    }
-}
-
 client.once(Events.ClientReady, async c => {
     console.log(`⏳ Warte auf Software-Verschlüsselung...`);
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
+    console.log(`🤖 ${c.user.tag} ist online!`);
     
+    // Voice Tracker Init
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
@@ -136,10 +130,10 @@ client.once(Events.ClientReady, async c => {
         { name: 'website', description: 'Link zum HQ' },
         { name: 'user', description: 'Infos über einen User (Stalking Mode)', options: [{ name: 'user', description: 'Wen willst du checken?', type: 6, required: false }] },
         { name: 'clear', description: 'Löscht Nachrichten', defaultMemberPermissions: PermissionFlagsBits.ManageMessages, options: [{ name: 'anzahl', description: 'Menge (1-100)', type: 4, required: true }] },
+        // 🎵 MUSIK BEFEHLE
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
-        { name: 'sag', description: 'Der Bot spricht deinen Text im Voice-Chat', options: [{ name: 'text', description: 'Was soll er sagen?', type: 3, required: true }] },
-        { name: 'pöbel', description: 'Beleidigt jemanden MÜNDLICH im Voice-Chat', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }] },
+        // TTS BEFEHLE ENTFERNT
         { name: 'meme', description: 'Gamer Memes' },
         { name: 'held', description: 'Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Ork Schrei!' },
@@ -149,7 +143,7 @@ client.once(Events.ClientReady, async c => {
         { name: 'orakel', description: 'Orakel befragen', options: [{ name: 'frage', description: 'Frage', type: 3, required: true }] },
         { name: 'portal', description: 'Rick & Morty Portal 🌀' },
         { name: 'jerry', description: 'Du bist ein Jerry', options: [{ name: 'user', description: 'Wer?', type: 6, required: true }] },
-        { name: 'roast', description: 'Beleidige einen User', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }, { name: 'stil', description: 'Style?', type: 3, required: false, choices: [{name: 'Rick 🧪', value: 'rick'}, {name: 'Hänno 🤖', value: 'ki'}, {name: 'Toxic 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } ]},
+        { name: 'roast', description: 'Beleidige einen User (Text)', options: [{ name: 'opfer', description: 'Wen?', type: 6, required: true }, { name: 'stil', description: 'Style?', type: 3, required: false, choices: [{name: 'Rick 🧪', value: 'rick'}, {name: 'Hänno 🤖', value: 'ki'}, {name: 'Toxic 🤬', value: 'toxic'}, {name: 'Ork 🟢', value: 'ork'}] } ]},
         { name: 'vote', description: 'Umfrage starten', options: [{ name: 'frage', description: 'Frage?', type: 3, required: true }] },
         { name: 'idee', description: 'Idee einreichen', options: [{ name: 'vorschlag', description: 'Idee', type: 3, required: true }] },
         { name: 'timer', description: 'Wecker stellen', options: [{ name: 'minuten', description: 'Minuten', type: 4, required: true }, { name: 'grund', description: 'Grund', type: 3, required: false }] },
@@ -180,17 +174,22 @@ client.once(Events.ClientReady, async c => {
         const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
         const now = Date.now();
         const lazyUsers = [];
+        
         voiceSessions.forEach((startTime, userId) => {
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            if (member && member.voice.channelId && (now - startTime >= 5400000)) { lazyUsers.push(userId); }
+            // 5400000 = 90 Minuten
+            if (member && member.voice.channelId && (now - startTime >= 5400000)) { 
+                lazyUsers.push(userId); 
+            }
         });
+
         if (lazyUsers.length > 0) {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
             voiceSessions.set(victimId, Date.now()); 
         } 
-    }, 60000); 
+    }, 60000); // Check jede Minute
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -202,11 +201,13 @@ client.on(Events.MessageDelete, message => {
     }
 });
 
-// VOICE STATE
+// VOICE STATE (WICHTIG FÜR TRAINER)
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     const memberId = newState.member.id;
     if (newState.member.user.bot) return; 
+    // User kommt rein
     if (!oldState.channelId && newState.channelId) { voiceSessions.set(memberId, Date.now()); }
+    // User geht raus
     else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
@@ -233,6 +234,7 @@ client.on(Events.InteractionCreate, async interaction => {
     const { commandName } = interaction;
 
     try {
+        // --- 🎵 MUSIK PLAYER ---
         if (commandName === 'play') {
             await interaction.deferReply();
             const channel = interaction.member.voice.channel;
@@ -252,6 +254,12 @@ client.on(Events.InteractionCreate, async interaction => {
             player.play(resource); connection.subscribe(player);
             await interaction.editReply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`🎶 Spiele: ${title}`).setURL(url).setFooter({ text: 'Via SoundCloud 🟠' })] });
         }
+        else if (commandName === 'stop') { 
+            player.stop(); 
+            interaction.reply('Gestoppt.'); 
+        }
+
+        // --- SONSTIGE BEFEHLE ---
         else if (commandName === 'setup') {
             const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🖥️ RIPtzchen\'s Setup (Razer Fanboy Edition)').setThumbnail('https://upload.wikimedia.org/wikipedia/en/thumb/4/40/Razer_Inc._logo.svg/1200px-Razer_Inc._logo.svg.png').addFields({ name: '🐍 Peripherie', value: 'Alles von Razer (Was sonst?)', inline: true }, { name: '🖱️ Maus', value: 'Razer Basilisk / Viper', inline: true }, { name: '⌨️ Tastatur', value: 'Razer BlackWidow / Huntsman', inline: true }, { name: '🎧 Headset', value: 'Razer Kraken / BlackShark', inline: true }, { name: '💻 CPU', value: 'High-End Intel/AMD (Ballert)', inline: true }, { name: '📺 GPU', value: 'NVIDIA RTX Monster', inline: true }).setFooter({ text: 'Chroma RGB +100 Skill' });
             await interaction.reply({ embeds: [embed] });
@@ -268,57 +276,47 @@ client.on(Events.InteractionCreate, async interaction => {
             const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`👤 Akte: ${user.username}`).setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 })).addFields({ name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }).setFooter({ text: 'Stalking Mode: ON' });
             await interaction.reply({ embeds: [embed] });
         }
-        else if (commandName === 'sag') {
-            await interaction.deferReply({ ephemeral: true });
-            const channel = interaction.member.voice.channel;
-            if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
-            const text = interaction.options.getString('text');
-            playTTS(channel, text);
-            await interaction.editReply({ content: `🗣️ Spreche: "${text}"` });
-        }
-        else if (commandName === 'pöbel') {
-            await interaction.deferReply({ ephemeral: true });
-            const channel = interaction.member.voice.channel;
-            if (!channel) return interaction.editReply({ content: 'Geh erst in einen Voice-Channel!' });
-            const target = interaction.options.getUser('opfer');
-            const allRoasts = [...HANNO_KI_ROASTS, ...STREAMER_ROASTS, ...RICK_ROASTS];
-            const randomRoast = allRoasts[Math.floor(Math.random() * allRoasts.length)];
-            playTTS(channel, `${target.username}, ${randomRoast}`);
-            await interaction.editReply({ content: `🗣️ Pöbele gegen ${target.username}...` });
+        else if (commandName === 'roast') { 
+            const target = interaction.options.getUser('opfer'); 
+            const style = interaction.options.getString('stil') || 'toxic'; 
+            let roast = ""; let prefix = ""; 
+            if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; } 
+            else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; } 
+            else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; roast = roast.replace('[User]', target.username); prefix = "🧪 **Rick:**"; } 
+            else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; } 
+            await interaction.reply(`${prefix} ${target}, ${roast}`); 
         }
         else if (commandName === 'timer') { 
             const minutes = interaction.options.getInteger('minuten'); 
-            // ✅ FIX: Text geändert von "Zeit abgelaufen!" zu "Timer"
             const reason = interaction.options.getString('grund') || 'Timer'; 
             await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`); 
             setTimeout(() => { interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`); }, minutes * 60 * 1000); 
         }
-        else if (commandName === 'portal') { const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)]; await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`); }
-        else if (commandName === 'jerry') { const user = interaction.options.getUser('user'); const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"]; await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`); }
-        else if (commandName === 'afk') { const reason = interaction.options.getString('grund') || 'Kein Grund angegeben'; afkUsers.set(interaction.user.id, reason); await interaction.reply(`💤 Du bist jetzt **AFK**. Grund: *${reason}*.`); }
-        else if (commandName === 'snipe') { const msg = snipes.get(interaction.channel.id); if (!msg) return interaction.reply({ content: 'Hier wurde nichts gelöscht.', ephemeral: true }); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Nur Bild*').setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` }); if (msg.image) embed.setImage(msg.image); await interaction.reply({ content: '👀 **Erwischt!**', embeds: [embed] }); }
-        else if (commandName === 'giveaway') { const prize = interaction.options.getString('preis'); const duration = interaction.options.getInteger('dauer'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎁 GIVEAWAY! 🎉').setDescription(`Preis: **${prize}**\n\nReagiere mit 🎉 um teilzunehmen!\nEndet in: **${duration} Minuten**`).setFooter({ text: `Host: ${interaction.user.username}` }); const message = await interaction.reply({ embeds: [embed], fetchReply: true }); await message.react('🎉'); setTimeout(async () => { const fetchedMsg = await interaction.channel.messages.fetch(message.id); const reactions = fetchedMsg.reactions.cache.get('🎉'); const users = await reactions.users.fetch(); const realUsers = users.filter(u => !u.bot); if (realUsers.size === 0) { interaction.channel.send(`Niemand wollte **${prize}**. Traurig.`); } else { const winner = realUsers.random(); interaction.channel.send(`🎉 Herzlichen Glückwunsch ${winner}! Du hast **${prize}** gewonnen! 🏆`); } }, duration * 60 * 1000); }
-        else if (commandName === 'idee') { const idea = interaction.options.getString('vorschlag'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('💡 Neue Idee!').setDescription(idea).setFooter({ text: `Vorschlag von ${interaction.user.username}` }); const msg = await interaction.reply({ embeds: [embed], fetchReply: true }); await msg.react('✅'); await msg.react('❌'); }
-        else if (commandName === 'held') { const quote = HELD_QUOTES[Math.floor(Math.random() * HELD_QUOTES.length)]; await interaction.reply(`🧱 **Held der Steine:** "${quote}"`); }
-        else if (commandName === 'waszocken') { const game = GAME_SUGGESTIONS[Math.floor(Math.random() * GAME_SUGGESTIONS.length)]; await interaction.reply(`🎮 **NekroBot empfiehlt:** ${game.name}\n*${game.comment}*`); }
-        else if (commandName === 'fakeban') { const target = interaction.options.getUser('user'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🚨 USER BANNED').setDescription(`**${target.username}** wurde permanent vom Server gebannt.`).setFooter({ text: 'Grund: Skill Issue' }); await interaction.reply({ embeds: [embed] }); setTimeout(() => { interaction.editReply({ content: `Spaaaß! ${target} bleibt hier. Du Lellek. 🤡`, embeds: [] }); }, 4000); }
-        else if (commandName === 'stop') { player.stop(); interaction.reply('Gestoppt.'); }
+        else if (commandName === 'portal') { await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)]}`); }
+        else if (commandName === 'jerry') { const user = interaction.options.getUser('user'); await interaction.reply(`**🧪 Rick zu ${user}:** "Geh in deine Ecke und spiel mit deinem Tablet, Jerry."`); }
+        else if (commandName === 'afk') { const reason = interaction.options.getString('grund') || 'Kein Grund'; afkUsers.set(interaction.user.id, reason); await interaction.reply(`💤 Du bist jetzt **AFK**. Grund: *${reason}*.`); }
+        else if (commandName === 'snipe') { const msg = snipes.get(interaction.channel.id); if (!msg) return interaction.reply({ content: 'Nichts gefunden.', ephemeral: true }); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Bild*').setFooter({ text: 'Gelöscht' }); if(msg.image) embed.setImage(msg.image); await interaction.reply({ embeds: [embed] }); }
+        else if (commandName === 'giveaway') { const p = interaction.options.getString('preis'); const d = interaction.options.getInteger('dauer'); const e = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎁 GIVEAWAY!').setDescription(`Preis: **${p}**\nEndet in: **${d} Min**`); const m = await interaction.reply({ embeds: [e], fetchReply: true }); await m.react('🎉'); setTimeout(async()=>{ const f=await interaction.channel.messages.fetch(m.id); const u=await f.reactions.cache.get('🎉').users.fetch(); const w=u.filter(x=>!x.bot).random(); interaction.channel.send(w ? `🎉 GW ${w}! Preis: **${p}**` : 'Niemand wollte es.'); }, d*60000); }
+        else if (commandName === 'idee') { const i = interaction.options.getString('vorschlag'); const e = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('💡 Idee').setDescription(i).setFooter({ text: interaction.user.username }); const m = await interaction.reply({ embeds: [e], fetchReply: true }); await m.react('✅'); await m.react('❌'); }
+        else if (commandName === 'held') { await interaction.reply(`🧱 **Held:** "${HELD_QUOTES[Math.floor(Math.random() * HELD_QUOTES.length)]}"`); }
+        else if (commandName === 'waszocken') { const g = GAME_SUGGESTIONS[Math.floor(Math.random() * GAME_SUGGESTIONS.length)]; await interaction.reply(`🎮 **Game:** ${g.name} - *${g.comment}*`); }
+        else if (commandName === 'fakeban') { await interaction.reply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🚨 BANNED').setDescription(`**${interaction.options.getUser('user').username}** gebannt.`).setFooter({ text: 'Skill Issue' })] }); setTimeout(() => interaction.editReply({ content: 'Spaß! 🤡', embeds: [] }), 4000); }
         else if (commandName === 'clear') { await interaction.channel.bulkDelete(interaction.options.getInteger('anzahl'), true); interaction.reply({ content: 'Gelöscht.', ephemeral: true }); }
-        else if (commandName === 'meme') { const subreddits = ['HandOfMemes', 'zocken', 'ich_iel']; const randomSub = subreddits[Math.floor(Math.random() * subreddits.length)]; try { const res = await axios.get(`https://meme-api.com/gimme/${randomSub}`); interaction.reply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(res.data.title).setImage(res.data.url).setFooter({ text: `Quelle: r/${randomSub}` })] }); } catch (e) { interaction.reply('Meme-Server pennt. 😴'); } }
-        else if (commandName === 'orakel') { const question = interaction.options.getString('frage'); const answer = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)]; const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎱 Das Orakel hat gesprochen').addFields({ name: 'Frage', value: question }, { name: 'Antwort', value: `**${answer}**` }); await interaction.reply({ embeds: [embed] }); }
-        else if (commandName === 'roast') { const target = interaction.options.getUser('opfer'); const style = interaction.options.getString('stil') || 'toxic'; let roast = ""; let prefix = ""; if (style === 'ki') { roast = HANNO_KI_ROASTS[Math.floor(Math.random() * HANNO_KI_ROASTS.length)]; prefix = "🤖 **Hänno-KI:**"; } else if (style === 'ork') { roast = `DU BIST EIN KLEINA SNOTLING! WAAAGH!`; prefix = "🟢 **Ork:**"; } else if (style === 'rick') { roast = RICK_ROASTS[Math.floor(Math.random() * RICK_ROASTS.length)]; roast = roast.replace('[User]', target.username); prefix = "🧪 **Rick:**"; } else { roast = STREAMER_ROASTS[Math.floor(Math.random() * STREAMER_ROASTS.length)]; prefix = "🤬 **Toxic:**"; } await interaction.reply(`${prefix} ${target}, ${roast}`); }
-        else if (commandName === 'stronghold') { const quote = STRONGHOLD_QUOTES[Math.floor(Math.random() * STRONGHOLD_QUOTES.length)]; await interaction.reply(`📜 **Der Berater:** "${quote}"`); }
-        else if (commandName === 'waaagh') { const quote = ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)]; await interaction.reply(`**🟢 ${quote}**`); }
-        else if (commandName === 'orkify') { let text = interaction.options.getString('text').toUpperCase(); const dictionary = { "HALLO": "OI!", "TSCHÜSS": "ABFAHRT!", "MEIN": "MEINZ", "DEIN": "DEINZ", "FREUND": "BOY", "FREUNDE": "BOYZ", "FEIND": "GIT", "MENSCH": "HUMIE", "AUTO": "KARRE", "SCHNELL": "SCHNELLA", "ROT": "ROT (SCHNELLA!)", "KAMPF": "MOSCH'N", "KRIEG": "WAAAGH", "SCHIEßEN": "DAKKA MACHEN", "SCHIESSEN": "DAKKA MACHEN", "WIE GEHTS": "WAT IZ?", "GUT": "STABIL", "SCHLECHT": "GROTIG", "GELD": "ZÄHNE", "IST": "IZ", "NICHT": "NICH'", "UND": "UN'", "JA": "JO BOSS", "NEIN": "NIX DA" }; for (const [key, value] of Object.entries(dictionary)) { const regex = new RegExp(`\\b${key}\\b`, 'g'); text = text.replace(regex, value); } text = text.replace(/!/g, "!!! WAAAGH!"); text = text.replace(/\./g, "!"); text = text.replace(/\?/g, "? HÄ?!"); const suffix = [" WAAAGH!", " HÖHÖ!", " DAKKA DAKKA!", " BRUTAL!", ""][Math.floor(Math.random() * 5)]; await interaction.reply(`🗣️ **${text}${suffix}**`); }
-        else if (commandName === 'vote') { const question = interaction.options.getString('frage'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('📊 UMFRAGE').setDescription(`**${question}**`).setFooter({ text: `Gestartet von ${interaction.user.username}` }); const msg = await interaction.reply({ embeds: [embed], fetchReply: true }); await msg.react('👍'); await msg.react('👎'); }
-        else if (commandName === 'avatar') { const user = interaction.options.getUser('user') || interaction.user; const embed = new EmbedBuilder().setTitle(`Avatar von ${user.username}`).setColor(EMBED_COLOR).setImage(user.displayAvatarURL({ dynamic: true, size: 1024 })); await interaction.reply({ embeds: [embed] }); }
-        else if (commandName === 'dice') { const sides = interaction.options.getInteger('seiten') || 6; const roll = Math.floor(Math.random() * sides) + 1; await interaction.reply(`🎲 **Würfelwurf (W${sides}):** ${roll}`); }
-        else if (commandName === 'serverinfo') { const guild = interaction.guild; const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`📊 Server-Infos: ${guild.name}`).setThumbnail(guild.iconURL()).addFields({ name: '👥 Member', value: `${guild.memberCount}`, inline: true }, { name: '📅 Erstellt am', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }); await interaction.reply({ embeds: [embed] }); }
-        else if (commandName === 'so') { const streamer = interaction.options.getString('streamer'); const embed = new EmbedBuilder().setColor(0x9146FF).setTitle(`📢 SHOUTOUT!`).setDescription(`**Ehrenmann-Alarm!**\nCheckt unbedingt **${streamer}** ab! Kuss auf die Nuss! 💜\n\n👉 https://twitch.tv/${streamer}`).setThumbnail('https://cdn-icons-png.flaticon.com/512/5968/5968819.png'); await interaction.reply({ embeds: [embed] }); }
-        else if (commandName === 'münze') { const result = Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL'; await interaction.reply(`Der Wurf sagt: **${result}**`); }
-        else if (commandName === 'backseat') { const tip = ["Hättest du mal besser gelootet.", "Skill Issue.", "Mein kleiner Bruder spielt besser.", "Crosshair-Placement auf Kniehöhe."][Math.floor(Math.random() * 4)]; await interaction.reply(`🤓 **Backseat Gamer:** "${tip}"`); }
-        else if (commandName === 'ssp') { const userChoice = interaction.options.getString('wahl'); const choices = ['schere', 'stein', 'papier']; const botChoice = choices[Math.floor(Math.random() * choices.length)]; let result = ""; if (userChoice === botChoice) result = "Unentschieden."; else if ((userChoice === 'schere' && botChoice === 'papier') || (userChoice === 'stein' && botChoice === 'schere') || (userChoice === 'papier' && botChoice === 'stein')) result = "Glückwunsch, du Cheater. 🎉"; else result = "Hah! Get rekt, Noob! 😎"; const emojis = { schere: '✂️', stein: '🪨', papier: '📄' }; await interaction.reply(`Du: ${emojis[userChoice]} vs. Ich: ${emojis[botChoice]}\n\n**${result}**`); }
-        else if (commandName === 'duell') { const opponent = interaction.options.getUser('gegner'); const attacker = interaction.user; if (opponent.id === attacker.id) return interaction.reply('Bruder, du kannst dich nicht selbst schlagen.'); const winner = Math.random() < 0.5 ? attacker : opponent; const embed = new EmbedBuilder().setColor(0xFF0000).setTitle(`⚔️ 1vs1`).setDescription(`**${winner.username}** hat gewonnen!`); await interaction.reply({ embeds: [embed] }); }
+        else if (commandName === 'meme') { try { const r = await axios.get(`https://meme-api.com/gimme/zocken`); interaction.reply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(r.data.title).setImage(r.data.url)] }); } catch { interaction.reply('Meme Fehler.'); } }
+        else if (commandName === 'orakel') { const a = ORACLE_ANSWERS[Math.floor(Math.random() * ORACLE_ANSWERS.length)]; await interaction.reply(`🎱 **Orakel:** ${a}`); }
+        else if (commandName === 'stronghold') { await interaction.reply(`📜 **Berater:** "${STRONGHOLD_QUOTES[Math.floor(Math.random() * STRONGHOLD_QUOTES.length)]}"`); }
+        else if (commandName === 'waaagh') { await interaction.reply(`**🟢 ${ORK_QUOTES[Math.floor(Math.random() * ORK_QUOTES.length)]}**`); }
+        else if (commandName === 'orkify') { let t = interaction.options.getString('text').toUpperCase().replace(/UND/g, "UN'").replace(/ICH/g, "ICKE"); await interaction.reply(`🗣️ **${t} WAAAGH!**`); }
+        else if (commandName === 'vote') { const e = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('📊 Vote').setDescription(interaction.options.getString('frage')); const m = await interaction.reply({ embeds: [e], fetchReply: true }); await m.react('👍'); await m.react('👎'); }
+        else if (commandName === 'avatar') { const u = interaction.options.getUser('user') || interaction.user; await interaction.reply({ embeds: [new EmbedBuilder().setTitle(u.username).setColor(EMBED_COLOR).setImage(u.displayAvatarURL({ dynamic: true, size: 1024 }))] }); }
+        else if (commandName === 'dice') { await interaction.reply(`🎲 **${Math.floor(Math.random() * (interaction.options.getInteger('seiten') || 6)) + 1}**`); }
+        else if (commandName === 'serverinfo') { await interaction.reply({ embeds: [new EmbedBuilder().setColor(EMBED_COLOR).setTitle(interaction.guild.name).addFields({ name: 'Member', value: `${interaction.guild.memberCount}` })] }); }
+        else if (commandName === 'so') { await interaction.reply({ embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle('📢 SHOUTOUT!').setDescription(`Check **${interaction.options.getString('streamer')}** ab!\n👉 https://twitch.tv/${interaction.options.getString('streamer')}`)] }); }
+        else if (commandName === 'münze') { await interaction.reply(Math.random() < 0.5 ? '🪙 KOPF' : '🦅 ZAHL'); }
+        else if (commandName === 'backseat') { await interaction.reply(`🤓 "Hättest du mal besser gelootet."`); }
+        else if (commandName === 'ssp') { await interaction.reply("Schere Stein Papier: Bot gewinnt. (Immer)."); }
+        else if (commandName === 'duell') { await interaction.reply(`⚔️ **${Math.random() < 0.5 ? interaction.user.username : interaction.options.getUser('gegner').username}** hat gewonnen!`); }
+
     } catch (e) {
         console.error('Interaction Error:', e);
     }
@@ -334,7 +332,6 @@ async function checkTwitch() {
             if (!isLive) {
                 isLive = true;
                 const channel = client.channels.cache.get(process.env.DISCORD_CHANNEL_ID); 
-                // ✅ SAFETY CHECK
                 if (channel) {
                     const streamInfo = data[0];
                     channel.send({ content: `@everyone RIPtzchen live!`, embeds: [new EmbedBuilder().setColor(0x9146FF).setTitle(streamInfo.user_name).setURL(`https://twitch.tv/${TWITCH_USER_LOGIN}`).setDescription(streamInfo.title).setImage(streamInfo.thumbnail_url.replace('{width}', '1280').replace('{height}', '720') + `?t=${Date.now()}`)] });
