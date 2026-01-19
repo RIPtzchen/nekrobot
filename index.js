@@ -14,7 +14,7 @@ const RULES_CHANNEL_ID   = '1103895697582993562';
 const ROLES_CHANNEL_ID   = '1103895697582993568';     
 const AUTO_ROLE_ID       = '1462020482722172958'; 
 const GYM_CHANNEL_ID     = '1462193628347895899'; 
-const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT (Fest eingestellt)
+const EMBED_COLOR        = 0x8B0000; // 🩸 BLUTROT
 
 const BAD_WORDS = ['hurensohn', 'hs', 'wichser', 'fortnite', 'schalke', 'bastard', 'lappen']; 
 
@@ -23,7 +23,7 @@ const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
-let isLive = false; // ✅ WICHTIG: Verhindert den Absturz beim Twitch-Check!
+let isLive = false; 
 
 // 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
@@ -34,13 +34,38 @@ const GAME_SUGGESTIONS = [{name: "League of Legends", comment: "Schmerzen."}, {n
 const HANNO_KI_ROASTS = ["Ich bin die optimierte Version. Du bist nur Schmutz.", "Geringbäcker!", "Lösch dich einfach.", "Hast du überhaupt Prime, du Lellek?", "Mein Code ist perfekt. Dein Aim ist ein Bug.", "Tastaturakrobat!", "Komm mal klar auf dein Leben, du NPC.", "Sieh es ein: Ich bin die Zukunft. Du bist Retro-Müll."];
 const STREAMER_ROASTS = ["Digga, du bist so ein Bot, lösch dich einfach.", "Was für ein Schmutz-Move.", "Bruder, dein Aim ist wie dein IQ: Nicht vorhanden.", "Halt die Gosch'n, du Lellek.", "Junge, guck dich doch mal an. Einfach bodenlos.", "Du bist so ein 31er.", "WAS MACHST DU DENN DA?!", "Get on my lvl, du Rentner.", "Ich glaub es hackt!", "Schleich dich, du Knecht!"];
 const STRONGHOLD_QUOTES = ["Eure Beliebtheit sinkt, My Lord!", "Die Vorräte schwinden dahin...", "Wir benötigen Holz!", "Die Leute verlassen die Burg.", "Eine Nachricht von der Ratte: *quiek*", "Die Schatzkammer leert sich!", "Es sind nicht genügend Arbeiter vorhanden!", "Ihr könnt das nicht dort platzieren, My Lord!", "Das Volk liebt euch, Sire! (Scherz)."];
-const GYM_TIPS = ["Muss net schmecke, muss wirke!", "Viel hilft viel!", "Nur Wasser macht nass! Wir wollen prall sein!", "Des bedarfs!", "Schwer und falsch!", "Wo ist der Thunfisch?", "Mach dich stabil!", "Cola Light? Das ist für den Geschmack!", "Komm, noch eine Wiederholung, du Masthuhn!", "Beweg dich!"];
 const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR DAKKA!", "GELB MACHT BUMM!", "MOSCH'N!", "GRÜN IZ DA BESTE!", "WIA GEH'N JETS KÖPPE EINSCHLAG'N!", "SCHNELLA IHR GITS!", "MEIN SPALTA JUCKT!"];
+
+// 🦍 RÜHL LEGENDARY QUOTES (Expanded)
+const GYM_TIPS = [
+    "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
+    "Viel hilft viel! Beweg deinen Arsch! 🏋️‍♂️", 
+    "Nur Wasser macht nass! Wir wollen prall sein! 💧",
+    "Des bedarfs! Sitz gerade, du Discopumper! 📏",
+    "Schwer und falsch! Hauptsache bewegt! 💪",
+    "Wo ist der Thunfisch? Du brauchst Proteine, du Lauch! 🐟",
+    "Mach dich stabil! Haltung bewahren! 🧱",
+    "Cola Light? Das ist für den Geschmack, du Weichei! 🥤",
+    "Komm, noch eine Wiederholung, du Masthuhn! 🐔",
+    "Wenn ich so aussehen würde wie du, würde ich lachend in ne Kreissäge laufen! 🪚",
+    "Stabil bleiben, Junge! Nicht wackeln wie ein Lämmerschwanz!",
+    "Das Gewicht muss hoch, die Ausführung ist zweitrangig! 😤",
+    "Thunfischproteinshake! Rein damit, Kopf in Nacken! 🤮",
+    "Du siehst aus wie ein gekochtes Spargelgemüse! Ab ans Eisen!",
+    "Breit gebaut, braun gebrannt, 100 Kilo Hantelbank! (Zumindest im Traum, oder?)",
+    "Hör auf zu heulen, trainier gefälligst!",
+    "Massephase ist das ganze Jahr! Friss!",
+    "Falsch trainiert ist besser als gar nicht trainiert! Auf geht's!",
+    "Reis und Pute, Reis und Pute. Das ist das Geheimnis! 🍚🦃",
+    "Geh mir aus der Sonne, du wirfst Schatten auf meinen Bizeps! 💪",
+    "Was ist das denn für ein Kindergewicht? Pack was drauf!",
+    "Discopumper-Alarm! Beine trainieren nicht vergessen! 🦵"
+];
 
 // --- AUDIO PLAYER ---
 const player = createAudioPlayer();
 
-// Auto-Disconnect (5 Sekunden Delay nach Ende)
+// Auto-Disconnect
 player.on(AudioPlayerStatus.Idle, () => {
     if (disconnectTimer) clearTimeout(disconnectTimer);
     disconnectTimer = setTimeout(() => {
@@ -56,10 +81,9 @@ player.on(AudioPlayerStatus.Idle, () => {
 player.on(AudioPlayerStatus.Playing, () => { if (disconnectTimer) clearTimeout(disconnectTimer); });
 player.on('error', error => { console.error('Audio Player Error:', error.message); });
 
-// --- WEBSERVER (Für UptimeRobot) ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Alive & Stabil. 🩸'));
+app.get('/', (req, res) => res.send('NekroBot Alive. 🟢'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -73,12 +97,11 @@ const client = new Client({
     ]
 });
 
-// TTS FUNKTION (Stabilisiert)
+// TTS FUNKTION
 async function playTTS(channel, text) {
     if (!channel) return;
     try {
         const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator });
-        // Text kürzen falls nötig (Google Limit)
         const safeText = text.length > 195 ? text.substring(0, 190) + "..." : text;
         const url = googleTTS.getAudioUrl(safeText, { lang: 'de', slow: false, host: 'https://translate.google.com' });
         const resource = createAudioResource(url);
@@ -96,7 +119,6 @@ client.once(Events.ClientReady, async c => {
     await sodium.ready; 
     console.log(`🔐 Verschlüsselung bereit!`);
     
-    // Voice Tracker Init (stellt sicher, dass Leute im Voice erfasst werden, wenn der Bot neu startet)
     c.guilds.cache.forEach(guild => {
         guild.voiceStates.cache.forEach(vs => {
             if (vs.channelId && !vs.member.user.bot) { voiceSessions.set(vs.member.id, Date.now()); }
@@ -152,30 +174,23 @@ client.once(Events.ClientReady, async c => {
     setInterval(checkTwitch, 120000); 
 
     // 💪 AGGRO TRAINER (90 MINUTEN)
-    // Wir checken jede Minute, aber lösen erst aus, wenn jemand 90 Min (5400000 ms) drin ist.
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
         const randomTip = GYM_TIPS[Math.floor(Math.random() * GYM_TIPS.length)];
         const now = Date.now();
         const lazyUsers = [];
-        
         voiceSessions.forEach((startTime, userId) => {
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            // Prüfen: User noch da? User im Voice? Zeit > 90 Min?
-            if (member && member.voice.channelId && (now - startTime >= 5400000)) { 
-                lazyUsers.push(userId); 
-            }
+            if (member && member.voice.channelId && (now - startTime >= 5400000)) { lazyUsers.push(userId); }
         });
-
         if (lazyUsers.length > 0) {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
             channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
-            // Reset timer für das Opfer, damit es nicht jede Minute gespammt wird
             voiceSessions.set(victimId, Date.now()); 
         } 
-    }, 60000); // Check jede Minute, ob die 90 Min voll sind.
+    }, 60000); 
 
     c.user.setActivity('plant den WAAAGH!', { type: 3 }); 
 });
@@ -191,9 +206,7 @@ client.on(Events.MessageDelete, message => {
 client.on(Events.VoiceStateUpdate, (oldState, newState) => {
     const memberId = newState.member.id;
     if (newState.member.user.bot) return; 
-    // User kommt rein
     if (!oldState.channelId && newState.channelId) { voiceSessions.set(memberId, Date.now()); }
-    // User geht raus
     else if (oldState.channelId && !newState.channelId) { voiceSessions.delete(memberId); }
 });
 
@@ -252,7 +265,6 @@ client.on(Events.InteractionCreate, async interaction => {
         else if (commandName === 'user') {
             const user = interaction.options.getUser('user') || interaction.user;
             const member = await interaction.guild.members.fetch(user.id);
-            // ✅ BLUTROT ERZWINGEN
             const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle(`👤 Akte: ${user.username}`).setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 })).addFields({ name: '📅 Account erstellt', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: false }, { name: '📥 Dem Server beigetreten', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: false }, { name: '📛 Rollen', value: member.roles.cache.map(r => r).join(' ').replace('@everyone', '') || 'Keine', inline: false }).setFooter({ text: 'Stalking Mode: ON' });
             await interaction.reply({ embeds: [embed] });
         }
@@ -274,13 +286,19 @@ client.on(Events.InteractionCreate, async interaction => {
             playTTS(channel, `${target.username}, ${randomRoast}`);
             await interaction.editReply({ content: `🗣️ Pöbele gegen ${target.username}...` });
         }
+        else if (commandName === 'timer') { 
+            const minutes = interaction.options.getInteger('minuten'); 
+            // ✅ FIX: Text geändert von "Zeit abgelaufen!" zu "Timer"
+            const reason = interaction.options.getString('grund') || 'Timer'; 
+            await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`); 
+            setTimeout(() => { interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`); }, minutes * 60 * 1000); 
+        }
         else if (commandName === 'portal') { const dim = DIMENSIONS[Math.floor(Math.random() * DIMENSIONS.length)]; await interaction.reply(`🌀 *ZAP!* **Portal geöffnet:**\n${dim}`); }
         else if (commandName === 'jerry') { const user = interaction.options.getUser('user'); const quotes = ["Das Universum ist dir egal? Naja, dem Universum bist du auch egal.", "Geh in deine Ecke und spiel mit deinem Tablet, Jerry.", "Hungry for Apples? Nein? Hungry for 'Halt die Fresse'? Ja!"]; await interaction.reply(`**🧪 Rick zu ${user}:** "${quotes[Math.floor(Math.random() * quotes.length)]}"`); }
         else if (commandName === 'afk') { const reason = interaction.options.getString('grund') || 'Kein Grund angegeben'; afkUsers.set(interaction.user.id, reason); await interaction.reply(`💤 Du bist jetzt **AFK**. Grund: *${reason}*.`); }
         else if (commandName === 'snipe') { const msg = snipes.get(interaction.channel.id); if (!msg) return interaction.reply({ content: 'Hier wurde nichts gelöscht.', ephemeral: true }); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setAuthor({ name: msg.author.tag, iconURL: msg.author.displayAvatarURL() }).setDescription(msg.content || '*Nur Bild*').setFooter({ text: `Gelöscht vor ${Math.floor((new Date().getTime() - msg.timestamp) / 1000)} Sekunden` }); if (msg.image) embed.setImage(msg.image); await interaction.reply({ content: '👀 **Erwischt!**', embeds: [embed] }); }
         else if (commandName === 'giveaway') { const prize = interaction.options.getString('preis'); const duration = interaction.options.getInteger('dauer'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🎁 GIVEAWAY! 🎉').setDescription(`Preis: **${prize}**\n\nReagiere mit 🎉 um teilzunehmen!\nEndet in: **${duration} Minuten**`).setFooter({ text: `Host: ${interaction.user.username}` }); const message = await interaction.reply({ embeds: [embed], fetchReply: true }); await message.react('🎉'); setTimeout(async () => { const fetchedMsg = await interaction.channel.messages.fetch(message.id); const reactions = fetchedMsg.reactions.cache.get('🎉'); const users = await reactions.users.fetch(); const realUsers = users.filter(u => !u.bot); if (realUsers.size === 0) { interaction.channel.send(`Niemand wollte **${prize}**. Traurig.`); } else { const winner = realUsers.random(); interaction.channel.send(`🎉 Herzlichen Glückwunsch ${winner}! Du hast **${prize}** gewonnen! 🏆`); } }, duration * 60 * 1000); }
         else if (commandName === 'idee') { const idea = interaction.options.getString('vorschlag'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('💡 Neue Idee!').setDescription(idea).setFooter({ text: `Vorschlag von ${interaction.user.username}` }); const msg = await interaction.reply({ embeds: [embed], fetchReply: true }); await msg.react('✅'); await msg.react('❌'); }
-        else if (commandName === 'timer') { const minutes = interaction.options.getInteger('minuten'); const reason = interaction.options.getString('grund') || 'Zeit abgelaufen!'; await interaction.reply(`⏰ Timer gestellt auf **${minutes} Minuten**. (${reason})`); setTimeout(() => { interaction.channel.send(`${interaction.user}, **DEIN TIMER IST ABGELAUFEN!** 🔔\nGrund: ${reason}`); }, minutes * 60 * 1000); }
         else if (commandName === 'held') { const quote = HELD_QUOTES[Math.floor(Math.random() * HELD_QUOTES.length)]; await interaction.reply(`🧱 **Held der Steine:** "${quote}"`); }
         else if (commandName === 'waszocken') { const game = GAME_SUGGESTIONS[Math.floor(Math.random() * GAME_SUGGESTIONS.length)]; await interaction.reply(`🎮 **NekroBot empfiehlt:** ${game.name}\n*${game.comment}*`); }
         else if (commandName === 'fakeban') { const target = interaction.options.getUser('user'); const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTitle('🚨 USER BANNED').setDescription(`**${target.username}** wurde permanent vom Server gebannt.`).setFooter({ text: 'Grund: Skill Issue' }); await interaction.reply({ embeds: [embed] }); setTimeout(() => { interaction.editReply({ content: `Spaaaß! ${target} bleibt hier. Du Lellek. 🤡`, embeds: [] }); }, 4000); }
