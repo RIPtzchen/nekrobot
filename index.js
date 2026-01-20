@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, Events, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
-// ✅ AUDIO & MUSIK SIND DRIN, TTS IST RAUS
+// ✅ AUDIO & MUSIK SIND DRIN
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, generateDependencyReport, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const play = require('play-dl');
 const axios = require('axios');
@@ -23,7 +23,7 @@ const snipes = new Map();
 const afkUsers = new Map();
 const voiceSessions = new Map();
 let disconnectTimer = null;
-let isLive = false; // ✅ WICHTIG gegen Abstürze
+let isLive = false; 
 
 // 🎱 CONTENT LISTEN
 const ORACLE_ANSWERS = ["Träum weiter.", "Sicher... nicht.", "Frag wen, den es interessiert.", "404: Motivation not found.", "Ja, aber du wirst es bereuen.", "Deine Chancen stehen schlechter als mein Code.", "Lösch dich.", "Absolut.", "Vielleicht, wenn du bettelst.", "Nein. Einfach nein."];
@@ -36,7 +36,7 @@ const STREAMER_ROASTS = ["Digga, du bist so ein Bot, lösch dich einfach.", "Was
 const STRONGHOLD_QUOTES = ["Eure Beliebtheit sinkt, My Lord!", "Die Vorräte schwinden dahin...", "Wir benötigen Holz!", "Die Leute verlassen die Burg.", "Eine Nachricht von der Ratte: *quiek*", "Die Schatzkammer leert sich!", "Es sind nicht genügend Arbeiter vorhanden!", "Ihr könnt das nicht dort platzieren, My Lord!", "Das Volk liebt euch, Sire! (Scherz)."];
 const ORK_QUOTES = ["WAAAGH!!!", "DAKKA DAKKA DAKKA!", "ROT IS SCHNELLA!", "MEHR DAKKA!", "GELB MACHT BUMM!", "MOSCH'N!", "GRÜN IZ DA BESTE!", "WIA GEH'N JETS KÖPPE EINSCHLAG'N!", "SCHNELLA IHR GITS!", "MEIN SPALTA JUCKT!"];
 
-// 🦍 RÜHL LEGENDARY QUOTES (Massiv erweitert)
+// 🦍 RÜHL LEGENDARY QUOTES (Massive Expansion)
 const GYM_TIPS = [
     "Muss net schmecke, muss wirke! Trink dein Shake! 🥤", 
     "Viel hilft viel! Beweg deinen Arsch! 🏋️‍♂️", 
@@ -67,7 +67,13 @@ const GYM_TIPS = [
     "Mehr essen! Du fällst ja vom Fleisch!",
     "Konzentration! Das ist kein Kaffeekränzchen hier!",
     "Junge, mach dich mal gerade, du hängst da wie ein Schluck Wasser in der Kurve!",
-    "Keine Schmerzen, kein Wachstum! Weitermachen!"
+    "Keine Schmerzen, kein Wachstum! Weitermachen!",
+    "Wer breit sein will, muss leiden! Heul leise!",
+    "Sieht aus wie Mikado bei dir, pass auf dass du nicht zerbrichst!",
+    "Ohne Mampf kein Dampf! Wo ist dein Meal-Prep?",
+    "Cardio? Kann man das essen? Ab an die Hantel!",
+    "Das ist Styropor, kein Gewicht! Mach schwerer!",
+    "Schultern wie Kanonenkugeln, das ist das Ziel! Nicht so Erbsen wie bei dir!"
 ];
 
 // --- AUDIO PLAYER (Für Musik) ---
@@ -92,7 +98,7 @@ player.on('error', error => { console.error('Audio Player Error:', error.message
 // --- WEBSERVER (UptimeRobot) ---
 const app = express();
 const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('NekroBot Music + Trainer. 🎶💪'));
+app.get('/', (req, res) => res.send('NekroBot Music + Trainer (2h). 🎶💪'));
 app.listen(port, () => console.log(`🌍 Webserver läuft auf Port ${port}`));
 
 const client = new Client({
@@ -133,7 +139,7 @@ client.once(Events.ClientReady, async c => {
         // 🎵 MUSIK BEFEHLE
         { name: 'play', description: 'Spielt Musik (SoundCloud)', options: [{ name: 'song', description: 'Suche oder Link', type: 3, required: true }] },
         { name: 'stop', description: 'Stoppt Musik' },
-        // TTS BEFEHLE ENTFERNT
+        // NO TTS
         { name: 'meme', description: 'Gamer Memes' },
         { name: 'held', description: 'Held der Steine 🧱' }, 
         { name: 'waaagh', description: 'Ork Schrei!' },
@@ -167,7 +173,7 @@ client.once(Events.ClientReady, async c => {
     checkTwitch();
     setInterval(checkTwitch, 120000); 
 
-    // 💪 AGGRO TRAINER (90 MINUTEN)
+    // 💪 AGGRO TRAINER (ALLE 2 STUNDEN)
     setInterval(() => {
         const channel = client.channels.cache.get(GYM_CHANNEL_ID);
         if (!channel) return;
@@ -178,16 +184,16 @@ client.once(Events.ClientReady, async c => {
         voiceSessions.forEach((startTime, userId) => {
             const guild = channel.guild;
             const member = guild.members.cache.get(userId);
-            // 5400000 = 90 Minuten
-            if (member && member.voice.channelId && (now - startTime >= 5400000)) { 
+            // 7200000 = 2 Stunden (120 Minuten)
+            if (member && member.voice.channelId && (now - startTime >= 7200000)) { 
                 lazyUsers.push(userId); 
             }
         });
 
         if (lazyUsers.length > 0) {
             const victimId = lazyUsers[Math.floor(Math.random() * lazyUsers.length)];
-            channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 90 Minuten im Voice! Beweg deinen Arsch! ${randomTip}`);
-            voiceSessions.set(victimId, Date.now()); 
+            channel.send(`**🦍 RÜHL ALARM:** <@${victimId}>, du Masthuhn hockst seit über 2 Stunden im Voice! Beweg deinen Arsch! ${randomTip}`);
+            voiceSessions.set(victimId, Date.now()); // Timer Reset
         } 
     }, 60000); // Check jede Minute
 
